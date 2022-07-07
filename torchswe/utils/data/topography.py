@@ -188,6 +188,9 @@ def _exchange_topo_vertices(domain: Domain, vertices: ndarray):
     """Exchange the halo ring information of vertices.
     """
 
+    if _nplike.__name__ == "cunumeric" or _nplike.__name__ == "numpy":
+        return vertices
+
     assert len(vertices.shape) == 2
     assert vertices.shape == tuple(i+1 for i in domain.hshape)
 

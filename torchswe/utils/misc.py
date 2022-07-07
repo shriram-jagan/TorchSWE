@@ -375,6 +375,9 @@ def exchange_states(states):
         The same object as the one in the input arguments.
     """
 
+    if _nplike.__name__ == "cunumeric" or _nplike.__name__ == "numpy":
+        return states
+
     # alias
     domain = states.domain
     cnsrv = states.q

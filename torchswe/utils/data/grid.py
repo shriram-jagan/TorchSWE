@@ -20,6 +20,7 @@ from operator import itemgetter as _itemgetter
 from typing import Literal as _Literal
 from typing import Tuple as _Tuple
 from typing import Union as _Union
+from typing import Any as _Any
 
 from mpi4py import MPI as _MPI
 from mpi4py.util.dtlib import from_numpy_dtype as _from_numpy_dtype
@@ -180,7 +181,8 @@ class Domain(_BaseConfig):
     """
 
     # mpi communicator
-    comm: _MPI.Cartcomm
+    comm: _Any 
+    #comm: _MPI.Cartcomm # SJ
 
     # neighbors
     e: _Union[_conint(ge=0), _Literal[_MPI.PROC_NULL]]
@@ -226,12 +228,10 @@ class Domain(_BaseConfig):
         mpitype = _from_numpy_dtype(sendbuf.dtype)
         _nplike.sync()
 
-        try:
-            values["comm"].Neighbor_alltoall([sendbuf, mpitype], [recvbuf, mpitype])
-        except TypeError as err:
-            if _nplike.__name__ == "cunumeric" and "__dlpack_device__" in str(err):
-                return values
-            raise
+        if _nplike.__name__ == "cunumeric" or _nplike.__name__ == "numpy":
+            return values
+        else:
+           values["comm"].Neighbor_alltoall([sendbuf, mpitype], [recvbuf, mpitype])
 
         # answers
         inds = {"s": (1, 2, 3), "n": (0, 2, 3), "w": (0, 1, 3), "e": (0, 1, 2), }
@@ -269,12 +269,10 @@ class Domain(_BaseConfig):
         mpitype = _from_numpy_dtype(dtype)
         _nplike.sync()
 
-        try:
-            values["comm"].Neighbor_alltoall([sendbuf, mpitype], [recvbuf, mpitype])
-        except TypeError as err:
-            if _nplike.__name__ == "cunumeric" and "__dlpack_device__" in str(err):
-                return values
-            raise
+        if _nplike.__name__ == "cunumeric" or _nplike.__name__ == "numpy":
+            return values
+        else:
+              values["comm"].Neighbor_alltoall([sendbuf, mpitype], [recvbuf, mpitype])
 
         # answers
         inds = {"s": (1, 2, 3), "n": (0, 2, 3), "w": (0, 1, 3), "e": (0, 1, 2), }
@@ -301,6 +299,9 @@ class Domain(_BaseConfig):
 
     @_root_validator(pre=False, skip_on_failure=True)
     def _val_delta(cls, values):  # pylint: disable=no-self-argument, no-self-use
+
+        if _nplike.__name__ == "cunumeric" or _nplike.__name__ == "numpy":
+            return values
 
         # check dx
         dxs = values["comm"].allgather(values["x"].delta)

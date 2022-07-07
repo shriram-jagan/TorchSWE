@@ -12,6 +12,7 @@
 
 import time
 import logging
+logging.basicConfig(filename='example.log', encoding='utf-8', level=logging.DEBUG)
 import pathlib
 import argparse
 
@@ -224,6 +225,7 @@ def get_runtime(comm, config, logger):
 
     # get initial solution object
     states = get_initial_states(config, comm=comm)  # let the function create a new Domain in States
+    #states = get_initial_states(config, comm=None)  # let the function create a new Domain in States
     logger.info("Obtained an initial solution object")
 
     # `runtime` holds things not available in config.yaml or may change during runtime
@@ -320,8 +322,12 @@ def init(comm, args=None):
     """
 
     # MPI size & rank
-    size = comm.Get_size()
-    rank = comm.Get_rank()
+    if nplike.__name__ == "cunumeric":
+        size = 1
+        rank = 0
+    else:
+        size = comm.Get_size()
+        rank = comm.Get_rank()
 
     # get cmd arguments
     args = get_cmd_arguments() if args is None else args
@@ -392,6 +398,9 @@ def main():
 
     # update data if this is a continued run
     soln, runtime = restart(soln, runtime, config, args.cont, logger)
+
+    logger.info('disabling runtime.times.save')
+    runtime.times.save = False 
 
     # create an NetCDF file and append I.C.
     if runtime.times.save and runtime.tidx == 0:

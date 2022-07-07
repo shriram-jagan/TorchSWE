@@ -25,6 +25,8 @@ def get_discontinuous_flux(states, gravity):
     ym = y.minus
     yp = y.plus
 
+    grav2 = gravity/2.0
+
     # face normal to x-direction: [hu, hu^2 + g(h^2)/2, huv]
     xm.f[0] = xm.q[1]
     xm.f[1] = xm.q[1] * xm.p[1] + grav2 * xm.p[0] * xm.p[0]
@@ -53,7 +55,7 @@ def central_scheme_kernel(ma, pa, mf, pf, mq, pq):
         flux = (pa * mf - ma * pf + coeff * (pq - mq)) / denominator;
 
     zero_ji = _nplike.nonzero(denominator == 0.)  # should we deal with small rounding err here???
-    flux[zero_ji] = 0.
+    flux[:, zero_ji[0], zero_ji[1]] = 0.
 
     return flux
 
@@ -87,8 +89,8 @@ def central_scheme(states):
 
 def get_local_speed_kernel(hp, hm, up, um, g):
     """For internal use to mimic CuPy and Cython kernels."""
-    ghp = sqrt(g * hp);
-    ghm = sqrt(g * hm);
+    ghp = _nplike.sqrt(g * hp);
+    ghm = _nplike.sqrt(g * hm);
     ap = _nplike.maximum(_nplike.maximum(up+ghp, um+ghm), 0.0);
     am = _nplike.minimum(_nplike.minimum(up-ghp, um-ghm), 0.0);
     return ap, am

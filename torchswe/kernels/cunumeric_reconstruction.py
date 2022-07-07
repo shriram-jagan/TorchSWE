@@ -57,7 +57,7 @@ def _fix_face_depth_edge(h, hc, tol, nh):
     ids = _nplike.nonzero(h < tol)
     nh[ids] = 0.0;
 
-    ids = _nplike.nonzero(h > hc2)
+    ids = _nplike.nonzero(h > hc*2.0)
     nh[ids] = hc[ids] * 2.0;
 
 
