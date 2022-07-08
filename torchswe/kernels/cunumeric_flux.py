@@ -55,7 +55,8 @@ def central_scheme_kernel(ma, pa, mf, pf, mq, pq):
         flux = (pa * mf - ma * pf + coeff * (pq - mq)) / denominator;
 
     zero_ji = _nplike.nonzero(denominator == 0.)  # should we deal with small rounding err here???
-    flux[:, zero_ji[0], zero_ji[1]] = 0.
+    if zero_ji[0].size > 0:
+        flux[:, zero_ji[0], zero_ji[1]] = 0.
 
     return flux
 
@@ -111,25 +112,19 @@ def get_local_speed(states, gravity):
         The same object as the input. Changed inplace. Returning it just for coding style.
     """
 
-    # alias to reduce dictionary look-up
-    face = states.face;
-    fx = face.x;
-    fy = face.y;
-    fxp = fx.plus;
-    fxm = fx.minus;
-    fyp = fy.plus;
-    fym = fy.minus;
-    xpU = fxp.p;
-    xmU = fxm.p;
-    xpa = fxp.a;
-    xma = fxm.a;
-    ypU = fyp.p;
-    ymU = fym.p;
-    ypa = fyp.a;
-    yma = fym.a;
-
     # faces normal to x- and y-directions
-    xpa, xma = get_local_speed_kernel(xpU[0], xmU[0], xpU[1], xmU[1], gravity)
-    ypa, yma = get_local_speed_kernel(ypU[0], ymU[0], ypU[2], ymU[2], gravity)
+    states.face.x.plus.a, states.face.x.minus.a = get_local_speed_kernel(
+            states.face.x.plus.p[0],
+            states.face.x.minus.p[0],
+            states.face.x.plus.p[1], 
+            states.face.x.minus.p[1], 
+            gravity)
+
+    states.face.y.plus.a, states.face.y.minus.a = get_local_speed_kernel(
+            states.face.y.plus.p[0], 
+            states.face.y.minus.p[0], 
+            states.face.y.plus.p[2], 
+            states.face.y.minus.p[2], 
+            gravity)
 
     return states
