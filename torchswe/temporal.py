@@ -229,7 +229,7 @@ def ssprk2(states: States, runtime: DummyDict, config: Config):
         if runtime.counter % config.params.log_steps == 0:
             fluid_vol = states.p[(0,)+states.domain.nonhalo_c].sum() * cell_area
             _nplike.sync()
-            if _nplike.__name__ != "cunumeric":
+            if _nplike.__name__ != "cunumeric" and _nplike.__name__ != "numpy":
                 fluid_vol = states.domain.comm.allreduce(fluid_vol, _MPI.SUM)
             _logger.info(info_str, runtime.counter, runtime.dt, runtime.cur_t, fluid_vol)
 
