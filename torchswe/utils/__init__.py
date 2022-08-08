@@ -8,3 +8,4 @@
 
 """Utilities of TorchSWE.
 """
+from .decorators import record_timestamps
