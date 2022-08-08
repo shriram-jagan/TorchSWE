@@ -37,6 +37,7 @@ from torchswe.kernels import reconstruct_cell_centers
 from torchswe.bcs import get_ghost_cell_updaters
 from torchswe.temporal import euler, ssprk2, ssprk3
 from torchswe.sources import topography_gradient, point_mass_source, friction, zero_stiff_terms
+import pickle as pkl
 
 # enforce print precision
 nplike.set_printoptions(precision=15, linewidth=200)
@@ -434,6 +435,22 @@ def main():
     logger.info("Done time marching.")
     logger.info("Run time (wall time): %s seconds", time.time()-perf_t0)
     logger.info("Program ends now.")
+
+    print("Domain nonhalo_c: ", soln.domain.nonhalo_c, (0,) + soln.domain.nonhalo_c)
+
+    d = {'w': soln.q[(0,) + soln.domain.nonhalo_c],
+        'hu': soln.q[(1,) + soln.domain.nonhalo_c],
+        'hv': soln.q[(2,) + soln.domain.nonhalo_c],
+        'h':  soln.p[(0,) + soln.domain.nonhalo_c],
+        'u':  soln.p[(1,) + soln.domain.nonhalo_c],
+        'v':  soln.p[(2,) + soln.domain.nonhalo_c],
+        'x':  soln.domain.x.v,
+        'dx': soln.domain.x.delta,
+        'dy': soln.domain.y.delta,
+        }
+
+    f = str(nplike.__name__) + '_allvars.pkl'
+    pkl.dump(d, open(f, "wb"))
 
     return 0
 
