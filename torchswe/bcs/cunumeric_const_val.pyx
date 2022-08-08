@@ -37,10 +37,13 @@ cdef void _const_val_bc_set_west(
     bc.qbcm2    = Q[comp, ngh:Q.shape[1]-ngh, ngh-2]
     bc.val = _nplike.full_like(bc.qbcm1, val, dtype=Q.dtype)
 
+    B[ngh:B.shape[0]-ngh, ngh-1] = Bx[0:B.shape[0]-2*ngh, 0]
+    B[ngh:B.shape[0]-ngh, ngh-2] = Bx[0:B.shape[0]-2*ngh, 0]
+
     # modify the topography elevation in ghost cells
-    for i in range(ngh, B.shape[0]-ngh):
-        B[i, ngh-1] = Bx[i-ngh, 0]
-        B[i, ngh-2] = Bx[i-ngh, 0]
+    #for i in range(ngh, B.shape[0]-ngh):
+    #    B[i, ngh-1] = Bx[i-ngh, 0]
+    #    B[i, ngh-2] = Bx[i-ngh, 0]
 
 
 cdef void _const_val_bc_set_east(
@@ -54,10 +57,13 @@ cdef void _const_val_bc_set_east(
     bc.qbcm2    = Q[comp, ngh:Q.shape[1]-ngh, Q.shape[2]-ngh+1]
     bc.val = _nplike.full_like(bc.qbcm1, val, dtype=Q.dtype)
 
+    B[ngh:B.shape[0]-ngh, B.shape[1]-ngh]   = Bx[0:B.shape[0]-2*ngh, Bx.shape[1]-1]
+    B[ngh:B.shape[0]-ngh, B.shape[1]-ngh+1] = Bx[0:B.shape[0]-2*ngh, Bx.shape[1]-1]
+
     # modify the topography elevation in ghost cells
-    for i in range(ngh, B.shape[0]-ngh):
-        B[i, B.shape[1]-ngh]   = Bx[i-ngh, Bx.shape[1]-1]
-        B[i, B.shape[1]-ngh+1] = Bx[i-ngh, Bx.shape[1]-1]
+    #for i in range(ngh, B.shape[0]-ngh):
+    #    B[i, B.shape[1]-ngh]   = Bx[i-ngh, Bx.shape[1]-1]
+    #    B[i, B.shape[1]-ngh+1] = Bx[i-ngh, Bx.shape[1]-1]
 
 
 cdef void _const_val_bc_set_south(
@@ -71,10 +77,13 @@ cdef void _const_val_bc_set_south(
     bc.qbcm2    = Q[comp, ngh-2,    ngh:Q.shape[2]-ngh]
     bc.val = _nplike.full_like(bc.qbcm1, val, dtype=Q.dtype)
 
+    B[ngh-1, ngh:B.shape[1]-ngh] = By[0, 0:B.shape[1]-2*ngh]
+    B[ngh-2, ngh:B.shape[1]-ngh] = By[0, 0:B.shape[1]-2*ngh]
+
     # modify the topography elevation in ghost cells
-    for i in range(ngh, B.shape[1]-ngh):
-        B[ngh-1, i] = By[0, i-ngh]
-        B[ngh-2, i] = By[0, i-ngh]
+    #for i in range(ngh, B.shape[1]-ngh):
+    #    B[ngh-1, i] = By[0, i-ngh]
+    #    B[ngh-2, i] = By[0, i-ngh]
 
 
 cdef void _const_val_bc_set_north(
@@ -88,10 +97,13 @@ cdef void _const_val_bc_set_north(
     bc.qbcm2    = Q[comp, Q.shape[1]-ngh+1,     ngh:Q.shape[2]-ngh]
     bc.val = _nplike.full_like(bc.qbcm1, val, dtype=Q.dtype)
 
+    B[B.shape[0]-ngh,   ngh:B.shape[1]-ngh] = By[By.shape[0]-1, 0:B.shape[1]-2*ngh]
+    B[B.shape[0]-ngh+1, ngh:B.shape[1]-ngh] = By[By.shape[0]-1, 0:B.shape[1]-2*ngh]
+
     # modify the topography elevation in ghost cells
-    for i in range(ngh, B.shape[1]-ngh):
-        B[B.shape[0]-ngh,   i] = By[By.shape[0]-1, i-ngh]
-        B[B.shape[0]-ngh+1, i] = By[By.shape[0]-1, i-ngh]
+    #for i in range(ngh, B.shape[1]-ngh):
+    #    B[B.shape[0]-ngh,   i] = By[By.shape[0]-1, i-ngh]
+    #    B[B.shape[0]-ngh+1, i] = By[By.shape[0]-1, i-ngh]
 
 
 cdef inline void _const_val_bc_factory(

@@ -42,10 +42,13 @@ cdef void _linear_extrap_bc_set_west(
     bc.qbcm1    = Q[comp, ngh:Q.shape[1]-ngh, ngh-1]
     bc.qbcm2    = Q[comp, ngh:Q.shape[1]-ngh, ngh-2]
 
+    B[ngh:B.shape[0]-ngh, ngh-1] = Bx[0:B.shape[0]-2*ngh, 0] * 2.0 - B[ngh:B.shape[0]-ngh, ngh]
+    B[ngh:B.shape[0]-ngh, ngh-2] = Bx[0:B.shape[0]-2*ngh, 0] * 4.0 - B[ngh:B.shape[0]-ngh, ngh] * 3.0
+
     # modify the topography elevation in ghost cells
-    for i in range(ngh, B.shape[0]-ngh):
-        B[i, ngh-1] = Bx[i-ngh, 0] * 2.0 - B[i, ngh]
-        B[i, ngh-2] = Bx[i-ngh, 0] * 4.0 - B[i, ngh] * 3.0
+    #for i in range(ngh, B.shape[0]-ngh):
+    #    B[i, ngh-1] = Bx[i-ngh, 0] * 2.0 - B[i, ngh]
+    #    B[i, ngh-2] = Bx[i-ngh, 0] * 4.0 - B[i, ngh] * 3.0
 
 
 cdef void _linear_extrap_bc_set_east(
@@ -59,10 +62,13 @@ cdef void _linear_extrap_bc_set_east(
     bc.qbcm1    = Q[comp, ngh:Q.shape[1]-ngh, Q.shape[2]-ngh]
     bc.qbcm2    = Q[comp, ngh:Q.shape[1]-ngh, Q.shape[2]-ngh+1]
 
+    B[ngh:B.shape[0]-ngh, B.shape[1]-ngh]   = Bx[0:B.shape[0]-2*ngh, Bx.shape[1]-1] * 2.0 - B[ngh:B.shape[0]-ngh, B.shape[1]-ngh-1]
+    B[ngh:B.shape[0]-ngh, B.shape[1]-ngh+1] = Bx[0:B.shape[0]-2*ngh, Bx.shape[1]-1] * 4.0 - B[ngh:B.shape[0]-ngh, B.shape[1]-ngh-1] * 3.0
+
     # modify the topography elevation in ghost cells
-    for i in range(ngh, B.shape[0]-ngh):
-        B[i, B.shape[1]-ngh]   = Bx[i-ngh, Bx.shape[1]-1] * 2.0 - B[i, B.shape[1]-ngh-1]
-        B[i, B.shape[1]-ngh+1] = Bx[i-ngh, Bx.shape[1]-1] * 4.0 - B[i, B.shape[1]-ngh-1] * 3.0
+    #for i in range(ngh, B.shape[0]-ngh):
+    #    B[i, B.shape[1]-ngh]   = Bx[i-ngh, Bx.shape[1]-1] * 2.0 - B[i, B.shape[1]-ngh-1]
+    #    B[i, B.shape[1]-ngh+1] = Bx[i-ngh, Bx.shape[1]-1] * 4.0 - B[i, B.shape[1]-ngh-1] * 3.0
 
 
 cdef void _linear_extrap_bc_set_south(
@@ -77,9 +83,12 @@ cdef void _linear_extrap_bc_set_south(
     bc.qbcm2    = Q[comp, ngh-2,    ngh:Q.shape[2]-ngh]
 
     # modify the topography elevation in ghost cells
-    for i in range(ngh, B.shape[1]-ngh):
-        B[ngh-1, i] = By[0, i-ngh] * 2.0 - B[ngh, i]
-        B[ngh-2, i] = By[0, i-ngh] * 4.0 - B[ngh, i] * 3.0
+    B[ngh-1, ngh:B.shape[1]-ngh] = By[0, 0:B.shape[1]-2*ngh] - B[ngh, ngh:B.shape[1]-ngh]
+    B[ngh-2, ngh:B.shape[1]-ngh] = By[0, 0:B.shape[1]-2*ngh] * 4.0 - B[ngh, ngh:B.shape[1]-ngh] * 3.0
+
+    #for i in range(ngh, B.shape[1]-ngh):
+    #    B[ngh-1, i] = By[0, i-ngh] * 2.0 - B[ngh, i]
+    #    B[ngh-2, i] = By[0, i-ngh] * 4.0 - B[ngh, i] * 3.0
 
 
 cdef void _linear_extrap_bc_set_north(
@@ -93,10 +102,13 @@ cdef void _linear_extrap_bc_set_north(
     bc.qbcm1    = Q[comp, Q.shape[1]-ngh,       ngh:Q.shape[2]-ngh]
     bc.qbcm2    = Q[comp, Q.shape[1]-ngh+1,     ngh:Q.shape[2]-ngh]
 
+    B[B.shape[0]-ngh, ngh:B.shape[1]-ngh]   = By[By.shape[0]-1, 0:B.shape[1]-2*ngh] * 2.0 - B[B.shape[0]-ngh-1, ngh:B.shape[1]-ngh]
+    B[B.shape[0]-ngh+1, ngh:B.shape[1]-ngh] = By[By.shape[0]-1, 0:B.shape[1]-2*ngh] * 4.0 - B[B.shape[0]-ngh-1, ngh:B.shape[1]-ngh] * 3.0
+
     # modify the topography elevation in ghost cells
-    for i in range(ngh, B.shape[1]-ngh):
-        B[B.shape[0]-ngh,   i] = By[By.shape[0]-1, i-ngh] * 2.0 - B[B.shape[0]-ngh-1, i]
-        B[B.shape[0]-ngh+1, i] = By[By.shape[0]-1, i-ngh] * 4.0 - B[B.shape[0]-ngh-1, i] * 3.0
+    #for i in range(ngh, B.shape[1]-ngh):
+    #    B[B.shape[0]-ngh,   i] = By[By.shape[0]-1, i-ngh] * 2.0 - B[B.shape[0]-ngh-1, i]
+    #    B[B.shape[0]-ngh+1, i] = By[By.shape[0]-1, i-ngh] * 4.0 - B[B.shape[0]-ngh-1, i] * 3.0
 
 
 cdef inline void _linear_extrap_bc_factory(
