@@ -54,9 +54,9 @@ def central_scheme_kernel(ma, pa, mf, pf, mq, pq):
     with _nplike.errstate(divide="ignore", invalid="ignore"):
         flux = (pa * mf - ma * pf + coeff * (pq - mq)) / denominator;
 
-    zero_ji = _nplike.nonzero(denominator == 0.)  # should we deal with small rounding err here???
+    zero_ji = (denominator == 0.)  # should we deal with small rounding err here???
     if zero_ji[0].size > 0:
-        flux[:, zero_ji[0], zero_ji[1]] = 0.
+        flux[:, zero_ji] = 0.
 
     return flux
 

@@ -13,7 +13,7 @@ def _minmod_slope_kernel(s1, s2, s3, theta):
     with _nplike.errstate(divide="ignore", invalid="ignore"):
         slp = (s2 - s1) / denominator;
 
-    slp[_nplike.nonzero(denominator == 0.0)] = 0.0
+    slp[denominator == 0.0] = 0.0
 
     slp = _nplike.maximum(
         _nplike.minimum(
@@ -35,15 +35,15 @@ def _minmod_slope_kernel(s1, s2, s3, theta):
 def _fix_face_depth_internal(hl, hc, hr, tol, nhl, nhr):
     """For internal use."""
 
-    ids = _nplike.nonzero(hc < tol)
+    ids = hc < tol
     nhl[ids] = 0.0;
     nhr[ids] = 0.0;
 
-    ids = _nplike.nonzero(hl < tol)
+    ids = hl < tol
     nhl[ids] = 0.0;
     nhr[ids] = hc[ids] * 2.0;
 
-    ids = _nplike.nonzero(hr < tol)
+    ids = hr < tol
     nhl[ids] = hc[ids] * 2.0;
     nhr[ids] = 0.0;
 
@@ -51,13 +51,11 @@ def _fix_face_depth_internal(hl, hc, hr, tol, nhl, nhr):
 def _fix_face_depth_edge(h, hc, tol, nh):
     """For internal use."""
 
-    ids = _nplike.nonzero(hc < tol)
-    nh[ids] = 0.0;
+    nh[hc < tol] = 0.0;
 
-    ids = _nplike.nonzero(h < tol)
-    nh[ids] = 0.0;
+    nh[h < tol] = 0.0;
 
-    ids = _nplike.nonzero(h > hc*2.0)
+    ids = h > hc*2.0
     nh[ids] = hc[ids] * 2.0;
 
 
@@ -67,7 +65,7 @@ def _recnstrt_face_velocity (h, hu, hv, drytol):
     u = hu / h;
     v = hv / h;
 
-    ids = _nplike.nonzero(h <= drytol)
+    ids = h <= drytol
     u[ids] = 0.0;
     v[ids] = 0.0;
 
@@ -186,7 +184,8 @@ def _recnstrt_cell_centers(w, hu, hv, bin, drytol, tol):
     u = hu / h;
     v = hv / h;
 
-    ids = _nplike.nonzero(h < tol)
+
+    ids = h < tol
     h[ids] = 0.0;
     u[ids] = 0.0;
     v[ids] = 0.0;
@@ -194,7 +193,7 @@ def _recnstrt_cell_centers(w, hu, hv, bin, drytol, tol):
     hu[ids] = 0.0;
     hv[ids] = 0.0;
 
-    ids = _nplike.nonzero(h < drytol)
+    ids = h < drytol
     u[ids] = 0.0;
     v[ids] = 0.0;
     hu[ids] = 0.0;

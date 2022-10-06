@@ -123,7 +123,7 @@ def friction(states: States, runtime: DummyDict, config: Config) -> States:
     states : torchswe.utils.data.States
         The same object as the input. Changes are done in-place. Returning it just for coding style.
     """
-    loc = _nplike.nonzero(states.p[(0,)+states.domain.nonhalo_c] > 0.)
+    loc = states.p[(0,)+states.domain.nonhalo_c] > 0.
 
     # views
     h = states.p[(0,)+states.domain.nonhalo_c][loc]
@@ -133,7 +133,7 @@ def friction(states: States, runtime: DummyDict, config: Config) -> States:
 
     coef = runtime.friction.model(h, hu, hv, config.props.nu, roughness)
 
-    states.ss[1:, loc[0], loc[1]] += (
+    states.ss[1:, loc] += (
         - coef * _nplike.sqrt(_nplike.power(hu, 2)+_nplike.power(hv, 2)) /
         (8. * _nplike.power(h, 2))
     )
