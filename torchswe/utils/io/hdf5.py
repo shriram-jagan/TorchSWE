@@ -35,7 +35,6 @@ from torchswe import nplike as _nplike
 from torchswe.utils.misc import DummyDict as _DummyDict
 from torchswe.utils.misc import find_index_bound as _find_index_bound
 
-
 def read_block(
     filename: PathLike, xykeys: Tuple[str, str], dkeys: Tuple[str, ...],
     extent: Tuple[float, float, float, float], domain: Domain
@@ -64,7 +63,7 @@ def read_block(
     """
 
     data = _DummyDict()
-    with _File(filename, "r", "mpio", comm=domain.comm) as root:
+    with _File(filename, "r", None) as root:
 
         # get index bounds
         data.x = _nplike.asarray(root[xykeys[0]][...])
@@ -295,17 +294,17 @@ def create_soln_file(states: States, runtime: DummyDict, config: Config):
     domain = states.domain
 
     # open a new HDF5 file and write in info that are unrelated to time marching
-    with _File(runtime.outfile, "w", "mpio", comm=domain.comm) as root:
+    with _File(runtime.outfile, "w", None) as root:
         root.attrs["time created"] = _datetime.now(_timezone.utc).isoformat()
         write_grid_to_group(domain, root)  # gridlines
 
     # topo; due to errors from underlying h5py/hdf5 lib, we are forced to close/re-open the file
-    with _File(runtime.outfile, "r+", "mpio", comm=domain.comm) as root:
+    with _File(runtime.outfile, "r+", None) as root:
         write_topo_to_group(runtime.topo, root)
 
     # friction; again; require close and re-open due to hdf5/h5py issues
     if config.friction is not None:
-        with _File(runtime.outfile, "r+", "mpio", comm=domain.comm) as root:
+        with _File(runtime.outfile, "r+", None) as root:
             write_frictionmodel_to_group(runtime.friction, root)
 
 
@@ -329,7 +328,7 @@ def write_snapshot(states: States, runtime: DummyDict, config: Config):
     if runtime.tidx == 0:  # the first time writing the solution
         create_soln_file(states, runtime, config)
 
-    with _File(runtime.outfile, "r+", "mpio", comm=states.domain.comm) as root:
+    with _File(runtime.outfile, "r+", None) as root:
         snapshot = root.require_group(f"{runtime.tidx}")
         snapshot.attrs["dt"] = float(runtime.dt)
         snapshot.attrs["iterations"] = int(runtime.counter)
@@ -365,7 +364,7 @@ def read_snapshot(states: States, runtime: DummyDict, config: Config):
     # aliases
     domain = states.domain
 
-    with _File(runtime.outfile, "r", "mpio", comm=domain.comm) as root:
+    with _File(runtime.outfile, "r", None) as root:
         snapshot = root[f"{runtime.tidx}"]
 
         assert float(snapshot.attrs["simulation time"]) == float(runtime.cur_t)
