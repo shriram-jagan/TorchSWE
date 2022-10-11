@@ -10,7 +10,8 @@
 """
 # pylint: disable=wrong-import-position
 
-import time
+import time as wtime
+from torchswe.utils.timing import time
 import logging
 logging.basicConfig(filename='example.log', encoding='utf-8', level=logging.DEBUG)
 import pathlib
@@ -413,8 +414,10 @@ def main():
         logger.info("No need to save data for \"no save\" method or for a continued run.")
 
     # initialize counter and performance profiling variable
-    perf_t0 = time.time()  # suppose to be wall time
-    logger.info("Time marching starts at %s", time.ctime(perf_t0))
+    #perf_t0 = time.time()  # suppose to be wall time
+    #logger.info("Time marching starts at %s", time.ctime(perf_t0))
+
+    perf_t0 = time()
 
     # start running time marching until each output time
     for runtime.next_t in runtime.times[runtime.tidx+1:]:
@@ -433,24 +436,30 @@ def main():
             logger.info("Done writing the states at T=%s to the solution file.", runtime.next_t)
 
     logger.info("Done time marching.")
-    logger.info("Run time (wall time): %s seconds", time.time()-perf_t0)
+    logger.info("Run time (wall time): %s seconds", (time()-perf_t0)/1e6)
     logger.info("Program ends now.")
 
-    print("Domain nonhalo_c: ", soln.domain.nonhalo_c, (0,) + soln.domain.nonhalo_c)
+    #logger.info("Done time marching.")
+    #logger.info("Run time (wall time): %s seconds", time.time()-perf_t0)
+    #logger.info("Program ends now.")
 
-    d = {'w': soln.q[(0,) + soln.domain.nonhalo_c],
-        'hu': soln.q[(1,) + soln.domain.nonhalo_c],
-        'hv': soln.q[(2,) + soln.domain.nonhalo_c],
-        'h':  soln.p[(0,) + soln.domain.nonhalo_c],
-        'u':  soln.p[(1,) + soln.domain.nonhalo_c],
-        'v':  soln.p[(2,) + soln.domain.nonhalo_c],
-        'x':  soln.domain.x.v,
-        'dx': soln.domain.x.delta,
-        'dy': soln.domain.y.delta,
-        }
+    # this could go in config file
+    dump_pkl = False
+    if dump_pkl:
 
-    f = str(nplike.__name__) + '_allvars.pkl'
-    pkl.dump(d, open(f, "wb"))
+        print("Domain nonhalo_c: ", soln.domain.nonhalo_c, (0,) + soln.domain.nonhalo_c)
+        d = {'w': soln.q[(0,) + soln.domain.nonhalo_c],
+            'hu': soln.q[(1,) + soln.domain.nonhalo_c],
+            'hv': soln.q[(2,) + soln.domain.nonhalo_c],
+            'h':  soln.p[(0,) + soln.domain.nonhalo_c],
+            'u':  soln.p[(1,) + soln.domain.nonhalo_c],
+            'v':  soln.p[(2,) + soln.domain.nonhalo_c],
+            'x':  soln.domain.x.v,
+            'dx': soln.domain.x.delta,
+            'dy': soln.domain.y.delta,
+            }
+        f = str(nplike.__name__) + '_allvars.pkl'
+        pkl.dump(d, open(f, "wb"))
 
     return 0
 
