@@ -9,7 +9,7 @@
 """Main function.
 """
 # pylint: disable=wrong-import-position
-
+import os as _os
 import time
 import logging
 import pathlib
@@ -403,8 +403,14 @@ def main():
         logger.info("No need to save data for \"no save\" method or for a continued run.")
 
     # initialize counter and performance profiling variable
-    perf_t0 = time.time()  # suppose to be wall time
-    logger.info("Time marching starts at %s", time.ctime(perf_t0))
+
+    if "USE_CUPY" in _os.environ and _os.environ["USE_CUPY"] == "1":
+        start_gpu = nplike.cuda.Event()
+        end_gpu = nplike.cuda.Event() 
+        start_gpu.record()
+    else:
+        perf_t0 = time.time()
+        logger.info("Time marching starts at %s", time.ctime(perf_t0))
 
     # start running time marching until each output time
     for runtime.next_t in runtime.times[runtime.tidx+1:]:
@@ -422,8 +428,16 @@ def main():
             soln = write_snapshot(soln, runtime, config)
             logger.info("Done writing the states at T=%s to the solution file.", runtime.next_t)
 
+    if "USE_CUPY" in _os.environ and _os.environ["USE_CUPY"] == "1":
+        end_gpu.record()
+        end_gpu.synchronize()
+        elapsed_time = nplike.cuda.get_elapsed_time(start_gpu, end_gpu)/1e3
+    else:
+        elapsed_time = time.time() - perf_t0
+
+
     logger.info("Done time marching.")
-    logger.info("Run time (wall time): %s seconds", time.time()-perf_t0)
+    logger.info("Run time (wall time): %s seconds", elapsed_time)
     logger.info("Program ends now.")
 
     return 0
