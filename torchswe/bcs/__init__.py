@@ -14,7 +14,6 @@ from mpi4py import MPI as _MPI
 from torchswe.utils.config import BCConfig as _BCConfig
 from torchswe.utils.data import Topography as _Topography
 from torchswe.utils.data import States as _States
-from torchswe.utils import record_timestamps
 import logging
 
 logger = logging.getLogger()
@@ -36,7 +35,6 @@ else:
     from ._cython_const_val import const_val_bc_factory  # pylint: disable=no-name-in-module
     from ._cython_inflow import inflow_bc_factory  # pylint: disable=no-name-in-module
 
-@record_timestamps
 def get_ghost_cell_updaters(states: _States, topo: _Topography, bcs: _BCConfig):
     """A function factory returning a function that updates all ghost cells.
 
