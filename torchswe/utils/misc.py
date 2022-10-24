@@ -267,6 +267,11 @@ def set_device(comm: _MPI.Comm):
 
     assert _nplike.__name__ == "cupy", "This function only works with CuPy backend."
 
+    # SJ: for now, we run on just one GPU w/o MPI, so just make it use the first GPU
+    if 1:
+        _nplike.cuda.runtime.setDevice(0)
+        return
+
     # get number of GPUs on this particular compute node
     n_gpus = _nplike.cuda.runtime.getDeviceCount()
 

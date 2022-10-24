@@ -102,7 +102,7 @@ def euler(states: States, runtime: DummyDict, config: Config):
 
         # synchronize dt across all ranks
         _nplike.sync()
-        if _nplike.__name__ != "cunumeric" and _nplike.__name__ != "numpy":
+        if _nplike.__name__ != "cunumeric" and _nplike.__name__ != "numpy" or _nplike.__name__ != "cupy":
             runtime.dt = states.domain.comm.allreduce(runtime.dt, _MPI.MIN)
 
         # update
@@ -122,7 +122,7 @@ def euler(states: States, runtime: DummyDict, config: Config):
         if runtime.counter % config.params.log_steps == 0:
             fluid_vol = states.p[(0,)+states.domain.nonhalo_c].sum() * cell_area
             _nplike.sync()
-            if _nplike.__name__ != "cunumeric" and _nplike.__name__ != "numpy":
+            if _nplike.__name__ != "cunumeric" and _nplike.__name__ != "numpy" or _nplike.__name__ != "cupy":
                 fluid_vol = states.domain.comm.allreduce(fluid_vol, _MPI.SUM)
             _logger.info(info_str, runtime.counter, runtime.dt, runtime.cur_t, fluid_vol)
 
@@ -200,7 +200,7 @@ def ssprk2(states: States, runtime: DummyDict, config: Config):
         # synchronize dt across all ranks
         _nplike.sync()
 
-        if _nplike.__name__ != "cunumeric" and _nplike.__name__ != "numpy":
+        if _nplike.__name__ != "cunumeric" and _nplike.__name__ != "numpy" and _nplike.__name__ != "cupy":
             runtime.dt = states.domain.comm.allreduce(runtime.dt, _MPI.MIN)
 
         # update for the first step; now states.q is u1 = u_{n} + dt * RHS(u_{n})
@@ -231,7 +231,7 @@ def ssprk2(states: States, runtime: DummyDict, config: Config):
         if runtime.counter % config.params.log_steps == 0:
             fluid_vol = states.p[(0,)+states.domain.nonhalo_c].sum() * cell_area
             _nplike.sync()
-            if _nplike.__name__ != "cunumeric" and _nplike.__name__ != "numpy":
+            if _nplike.__name__ != "cunumeric" and _nplike.__name__ != "numpy" and _nplike.__name__ != "cupy":
                 fluid_vol = states.domain.comm.allreduce(fluid_vol, _MPI.SUM)
             _logger.info(info_str, runtime.counter, runtime.dt, runtime.cur_t, fluid_vol)
 

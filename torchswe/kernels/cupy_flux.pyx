@@ -1,33 +1,9 @@
 # vim:fenc=utf-8
 # vim:ft=pyrex
-import cupy
+from torchswe import nplike as _nplike
 
 
-cdef get_discontinuous_flux_x = cupy.ElementwiseKernel(
-    "T hu, T h, T u, T v, float64 grav2",
-    "T f0, T f1, T f2",
-    """
-        f0 = hu;
-        f1 = hu * u + grav2 * h * h;
-        f2 = hu * v;
-    """,
-    "get_discontinuous_flux_x"
-)
-
-
-cdef get_discontinuous_flux_y = cupy.ElementwiseKernel(
-    "T hv, T h, T u, T v, float64 grav2",
-    "T f0, T f1, T f2",
-    """
-        f0 = hv;
-        f1 = u * hv;
-        f2 = hv * v + grav2 * h * h;
-    """,
-    "get_discontinuous_flux_y"
-)
-
-
-def get_discontinuous_flux(object states, double gravity):
+def get_discontinuous_flux(states, gravity):
     """Calculting the discontinuous fluxes on the both sides at cell faces.
 
     Arguments
@@ -41,8 +17,6 @@ def get_discontinuous_flux(object states, double gravity):
         The same object as the input. Changed inplace. Returning it just for coding style.
     """
 
-    cdef double grav2 = gravity / 2.
-
     x = states.face.x
     xm = x.minus
     xp = x.plus
@@ -51,31 +25,43 @@ def get_discontinuous_flux(object states, double gravity):
     ym = y.minus
     yp = y.plus
 
+    grav2 = gravity/2.0
+
     # face normal to x-direction: [hu, hu^2 + g(h^2)/2, huv]
-    get_discontinuous_flux_x(xm.q[1], xm.p[0], xm.p[1], xm.p[2], grav2, xm.f[0], xm.f[1], xm.f[2])
-    get_discontinuous_flux_x(xp.q[1], xp.p[0], xp.p[1], xp.p[2], grav2, xp.f[0], xp.f[1], xp.f[2])
+    xm.f[0] = xm.q[1]
+    xm.f[1] = xm.q[1] * xm.p[1] + grav2 * xm.p[0] * xm.p[0]
+    xm.f[2] = xm.q[1] * xm.p[2]
+    xp.f[0] = xp.q[1]
+    xp.f[1] = xp.q[1] * xp.p[1] + grav2 * xp.p[0] * xp.p[0]
+    xp.f[2] = xp.q[1] * xp.p[2]
 
     # face normal to y-direction: [hv, huv, hv^2+g(h^2)/2]
-    get_discontinuous_flux_y(ym.q[2], ym.p[0], ym.p[1], ym.p[2], grav2, ym.f[0], ym.f[1], ym.f[2])
-    get_discontinuous_flux_y(yp.q[2], yp.p[0], yp.p[1], yp.p[2], grav2, yp.f[0], yp.f[1], yp.f[2])
+    ym.f[0] = ym.q[2]
+    ym.f[1] = ym.q[2] * ym.p[1]
+    ym.f[2] = ym.q[2] * ym.p[2] + grav2 * ym.p[0] * ym.p[0]
+    yp.f[0] = yp.q[2]
+    yp.f[1] = yp.q[2] * yp.p[1]
+    yp.f[2] = yp.q[2] * yp.p[2] + grav2 * yp.p[0] * yp.p[0]
 
     return states
 
 
-cdef central_scheme_kernel = cupy.ElementwiseKernel(
-    "T ma, T pa, T mf, T pf, T mq, T pq",
-    "T flux",
-    """
-        T denominator = pa - ma;
-        T coeff = pa * ma;
+def central_scheme_kernel(ma, pa, mf, pf, mq, pq):
+    """For internal use"""
+    denominator = pa - ma
+    coeff = pa * ma
+
+    with _nplike.errstate(divide="ignore", invalid="ignore"):
         flux = (pa * mf - ma * pf + coeff * (pq - mq)) / denominator;
-        if (flux != flux) flux = 0.0;
-    """,
-    "central_scheme_kernel"
-)
+
+    zero_ji = (denominator == 0.)  # should we deal with small rounding err here???
+    if zero_ji[0].size > 0:
+        flux[:, zero_ji] = 0.
+
+    return flux
 
 
-def central_scheme(object states):
+def central_scheme(states):
     """A central scheme to calculate numerical flux at interfaces.
 
     Arguments
@@ -96,26 +82,22 @@ def central_scheme(object states):
     ym = y.minus
     yp = y.plus
 
-    central_scheme_kernel(xm.a, xp.a, xm.f, xp.f, xm.q, xp.q, x.cf)
-    central_scheme_kernel(ym.a, yp.a, ym.f, yp.f, ym.q, yp.q, y.cf)
+    x.cf = central_scheme_kernel(xm.a, xp.a, xm.f, xp.f, xm.q, xp.q)
+    y.cf = central_scheme_kernel(ym.a, yp.a, ym.f, yp.f, ym.q, yp.q)
 
     return states
 
 
-cdef get_local_speed_kernel = cupy.ElementwiseKernel(
-    "T hp, T hm, T up, T um, T g",
-    "T ap, T am",
-    r"""
-        T ghp = sqrt(g * hp);
-        T ghm = sqrt(g * hm);
-        ap = max(max(up+ghp, um+ghm), 0.0);
-        am = min(min(up-ghp, um-ghm), 0.0);
-    """,
-    "get_local_speed_kernel"
-)
+def get_local_speed_kernel(hp, hm, up, um, g):
+    """For internal use to mimic CuPy and Cython kernels."""
+    ghp = _nplike.sqrt(g * hp);
+    ghm = _nplike.sqrt(g * hm);
+    ap = _nplike.maximum(_nplike.maximum(up+ghp, um+ghm), 0.0);
+    am = _nplike.minimum(_nplike.minimum(up-ghp, um-ghm), 0.0);
+    return ap, am
 
 
-def get_local_speed(object states, double gravity):
+def get_local_speed(states, gravity):
     """Calculate local speeds on the two sides of cell faces.
 
     Arguments
@@ -130,25 +112,19 @@ def get_local_speed(object states, double gravity):
         The same object as the input. Changed inplace. Returning it just for coding style.
     """
 
-    # alias to reduce dictionary look-up
-    cdef object face = states.face;
-    cdef object fx = face.x;
-    cdef object fy = face.y;
-    cdef object fxp = fx.plus;
-    cdef object fxm = fx.minus;
-    cdef object fyp = fy.plus;
-    cdef object fym = fy.minus;
-    cdef object xpU = fxp.p;
-    cdef object xmU = fxm.p;
-    cdef object xpa = fxp.a;
-    cdef object xma = fxm.a;
-    cdef object ypU = fyp.p;
-    cdef object ymU = fym.p;
-    cdef object ypa = fyp.a;
-    cdef object yma = fym.a;
-
     # faces normal to x- and y-directions
-    get_local_speed_kernel(xpU[0], xmU[0], xpU[1], xmU[1], gravity, xpa, xma)
-    get_local_speed_kernel(ypU[0], ymU[0], ypU[2], ymU[2], gravity, ypa, yma)
+    states.face.x.plus.a, states.face.x.minus.a = get_local_speed_kernel(
+            states.face.x.plus.p[0],
+            states.face.x.minus.p[0],
+            states.face.x.plus.p[1], 
+            states.face.x.minus.p[1], 
+            gravity)
+
+    states.face.y.plus.a, states.face.y.minus.a = get_local_speed_kernel(
+            states.face.y.plus.p[0], 
+            states.face.y.minus.p[0], 
+            states.face.y.plus.p[2], 
+            states.face.y.minus.p[2], 
+            gravity)
 
     return states

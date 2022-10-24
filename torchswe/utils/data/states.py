@@ -313,7 +313,7 @@ class States(_BaseConfig):
         """Manually validate each item in the osc field.
         """
 
-        if _nplike.__name__ == "cunumeric" or _nplike.__name__ == "numpy":
+        if _nplike.__name__ == "cunumeric" or _nplike.__name__ == "numpy" or _nplike.__name__ == "cupy":
             return val
 
         for name in ["q"]:
@@ -331,7 +331,7 @@ class States(_BaseConfig):
         """Validate shapes and dtypes.
         """
 
-        if _nplike.__name__ == "cunumeric" or _nplike.__name__ == "numpy":
+        if _nplike.__name__ == "cunumeric" or _nplike.__name__ == "numpy" or _nplike.__name__ == "cupy":
             return values
 
         # aliases
@@ -371,7 +371,7 @@ class States(_BaseConfig):
         """Validate the exchanging mechanism of data.
         """
 
-        if _nplike.__name__ == "cunumeric" or _nplike.__name__ == "numpy":
+        if _nplike.__name__ == "cunumeric" or _nplike.__name__ == "numpy" or _nplike.__name__ == "cupy":
             return values
 
         # aliases
@@ -422,7 +422,7 @@ def _get_osc_conservative_mpi_datatype(comm: MPI.Cartcomm, arry: ndarray, ngh: i
     """Get the halo ring MPI datatypes for conservative quantities for one-sided communications.
     """
 
-    if _nplike.__name__ == "cunumeric" or _nplike.__name__ == "numpy":
+    if _nplike.__name__ == "cunumeric" or _nplike.__name__ == "numpy" or _nplike.__name__ == "cupy":
         data = _DummyDict()
         data.win = _DummyDict()
         data.win.Put = _dummy_function
@@ -552,7 +552,8 @@ def get_empty_states(config: Config, domain: Domain = None, comm: MPI.Comm = Non
     )
 
     # SJ: check if this works
-    data.domain.comm = None
+    if _nplike.__name__ == "cunumeric" or _nplike.__name__ == "numpy" or _nplike.__name__ == "cupy":
+        data.domain.comm = None
 
     # get one-sided communication windows and datatypes
     data.osc = _DummyDict()

@@ -228,7 +228,7 @@ class Domain(_BaseConfig):
         mpitype = _from_numpy_dtype(sendbuf.dtype)
         _nplike.sync()
 
-        if _nplike.__name__ == "cunumeric" or _nplike.__name__ == "numpy":
+        if _nplike.__name__ == "cunumeric" or _nplike.__name__ == "numpy" or _nplike.__name__ == "cupy":
             return values
         else:
            values["comm"].Neighbor_alltoall([sendbuf, mpitype], [recvbuf, mpitype])
@@ -269,7 +269,7 @@ class Domain(_BaseConfig):
         mpitype = _from_numpy_dtype(dtype)
         _nplike.sync()
 
-        if _nplike.__name__ == "cunumeric" or _nplike.__name__ == "numpy":
+        if _nplike.__name__ == "cunumeric" or _nplike.__name__ == "numpy" or _nplike.__name__ == "cupy":
             return values
         else:
               values["comm"].Neighbor_alltoall([sendbuf, mpitype], [recvbuf, mpitype])
@@ -300,7 +300,7 @@ class Domain(_BaseConfig):
     @_root_validator(pre=False, skip_on_failure=True)
     def _val_delta(cls, values):  # pylint: disable=no-self-argument, no-self-use
 
-        if _nplike.__name__ == "cunumeric" or _nplike.__name__ == "numpy":
+        if _nplike.__name__ == "cunumeric" or _nplike.__name__ == "numpy" or _nplike.__name__ == "cupy":
             return values
 
         # check dx

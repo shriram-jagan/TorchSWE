@@ -324,12 +324,12 @@ def init(comm, args=None):
     """
 
     # MPI size & rank
-    if nplike.__name__ == "cunumeric":
-        size = 1
-        rank = 0
-    else:
+    if nplike.__name__ != "cunumeric" and nplike.__name__ != "numpy" and nplike.__name__ != "cupy":
         size = comm.Get_size()
         rank = comm.Get_rank()
+    else:
+        size = 1
+        rank = 0
 
     # get cmd arguments
     args = get_cmd_arguments() if args is None else args
