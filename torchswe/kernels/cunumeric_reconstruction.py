@@ -41,10 +41,10 @@ def _fix_face_depth_internal(hl, hc, hr, tol, nhl, nhr):
 
     ids = hl < tol
     nhl[ids] = 0.0;
-    nhr[ids] = hc[ids] * 2.0;
+    _nplike.putmask(nhr, ids, hc*2.0) 
 
     ids = hr < tol
-    nhl[ids] = hc[ids] * 2.0;
+    _nplike.putmask(nhl, ids, hc*2.0)
     nhr[ids] = 0.0;
 
 
@@ -56,7 +56,7 @@ def _fix_face_depth_edge(h, hc, tol, nh):
     nh[h < tol] = 0.0;
 
     ids = h > hc*2.0
-    nh[ids] = hc[ids] * 2.0;
+    _nplike.putmask(nh, ids, hc*2.0)
 
 
 def _recnstrt_face_velocity (h, hu, hv, drytol):
@@ -189,7 +189,7 @@ def _recnstrt_cell_centers(w, hu, hv, bin, drytol, tol):
     h[ids] = 0.0;
     u[ids] = 0.0;
     v[ids] = 0.0;
-    w[ids] = bin[ids];
+    _nplike.putmask(w, ids, bin)
     hu[ids] = 0.0;
     hv[ids] = 0.0;
 
