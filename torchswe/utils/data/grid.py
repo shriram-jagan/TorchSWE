@@ -29,6 +29,7 @@ from pydantic import conint as _conint
 from pydantic import confloat as _confloat
 from pydantic import root_validator as _root_validator
 from torchswe import nplike as _nplike
+from torchswe import is_backend_cunumeric
 from torchswe.utils.config import BaseConfig as _BaseConfig
 from torchswe.utils.misc import DummyDtype as _DummyDtype
 from torchswe.utils.misc import DummyDict as _DummyDict
@@ -182,7 +183,7 @@ class Domain(_BaseConfig):
 
     # mpi communicator
     comm: _Any 
-    #comm: _MPI.Cartcomm # SJ
+    #comm: _MPI.Cartcomm # comm will be None for cunumeric backend
 
     # neighbors
     e: _Union[_conint(ge=0), _Literal[_MPI.PROC_NULL]]
@@ -414,7 +415,8 @@ def get_gridline_x(comm: MPI.Cartcomm, config: Config):
     gridline : torchswe.utils.data.grid.Gridline
     """
 
-    assert isinstance(comm, _MPI.Cartcomm), "The communicator must be a Cartesian communicator."
+    if not is_backend_cunumeric():
+        assert isinstance(comm, _MPI.Cartcomm), "The communicator must be a Cartesian communicator."
 
     arg         = _DummyDict()
     arg.axis    = "x"
@@ -424,7 +426,11 @@ def get_gridline_x(comm: MPI.Cartcomm, config: Config):
     arg.delta   = (arg.gupper - arg.glower) / arg.gn
     arg.dtype   = _DummyDtype.validator(config.params.dtype)
 
-    arg.n, arg.ibegin, arg.iend = _cal_local_gridline_range(comm.dims[1], comm.coords[1], arg.gn)
+    if is_backend_cunumeric():
+        arg.n, arg.ibegin, arg.iend = _cal_local_gridline_range(1, 0, arg.gn)
+    else:
+        arg.n, arg.ibegin, arg.iend = _cal_local_gridline_range(comm.dims[1], comm.coords[1], arg.gn)
+
     arg.lower                   = arg.ibegin * arg.delta + arg.glower
     arg.upper                   = arg.iend * arg.delta + arg.glower
 
@@ -451,7 +457,8 @@ def get_gridline_y(comm: MPI.Cartcomm, config: Config):
     gridline : torchswe.utils.data.grid.Gridline
     """
 
-    assert isinstance(comm, _MPI.Cartcomm), "The communicator must be a Cartesian communicator."
+    if not is_backend_cunumeric():
+        assert isinstance(comm, _MPI.Cartcomm), "The communicator must be a Cartesian communicator."
 
     arg         = _DummyDict()
     arg.axis    = "y"
@@ -461,7 +468,12 @@ def get_gridline_y(comm: MPI.Cartcomm, config: Config):
     arg.delta   = (arg.gupper - arg.glower) / arg.gn
     arg.dtype   = _DummyDtype.validator(config.params.dtype)
 
-    arg.n, arg.ibegin, arg.iend = _cal_local_gridline_range(comm.dims[0], comm.coords[0], arg.gn)
+
+    if is_backend_cunumeric():
+        arg.n, arg.ibegin, arg.iend = _cal_local_gridline_range(1, 0, arg.gn)
+    else:
+        arg.n, arg.ibegin, arg.iend = _cal_local_gridline_range(comm.dims[0], comm.coords[0], arg.gn)
+
     arg.lower                   = arg.ibegin * arg.delta + arg.glower
     arg.upper                   = arg.iend * arg.delta + arg.glower
 
@@ -547,17 +559,25 @@ def get_domain(comm: MPI.Comm, config: Config):
     # to hold data for initializing a Domain instance
     data = _DummyDict()
 
-    # only when the provided communicator is not a Cartesian communicator
-    if not isinstance(comm, _MPI.Cartcomm):
-        # evaluate the number of ranks in x/y direction and get a Cartesian topology communicator
-        pnx, pny = _cal_num_procs(comm.Get_size(), *config.spatial.discretization)
-        data.comm = comm.Create_cart((pny, pnx), period, True)
+    # cunumeric backend should not use cartesian comm, so don't create communicator 
+    if is_backend_cunumeric():
+        data.comm = None
     else:
-        data.comm = comm
+        # only when the provided communicator is not a Cartesian communicator
+        if not isinstance(comm, _MPI.Cartcomm):
+            # evaluate the number of ranks in x/y direction and get a Cartesian topology communicator
+            pnx, pny = _cal_num_procs(comm.Get_size(), *config.spatial.discretization)
+            data.comm = comm.Create_cart((pny, pnx), period, True)
+        else:
+            data.comm = comm
 
     # find the rank of neighbors
-    data.s, data.n = data.comm.Shift(0, 1)
-    data.w, data.e = data.comm.Shift(1, 1)
+    if is_backend_cunumeric():
+        data.s, data.n = _MPI.PROC_NULL, _MPI.PROC_NULL
+        data.w, data.e = _MPI.PROC_NULL, _MPI.PROC_NULL 
+    else:
+        data.s, data.n = data.comm.Shift(0, 1)
+        data.w, data.e = data.comm.Shift(1, 1)
 
     # get local gridline
     data.x = get_gridline_x(data.comm, config)

@@ -69,3 +69,13 @@ else:
     import numpy as nplike
     nplike.sync = _dummy_function
     nplike.get = lambda arg: arg
+
+
+def is_backend_cunumeric():
+    return True if nplike.__name__ == "cunumeric" else False
+
+def is_backend_numpy():
+    return True if nplike.__name__ == "numpy" else False
+
+def is_backend_cupy():
+    return True if nplike.__name__ == "cupy" else False

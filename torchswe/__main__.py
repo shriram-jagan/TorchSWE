@@ -24,7 +24,7 @@ mpi4py.rc.threads = False
 from mpi4py import MPI
 from torchswe import nplike
 from torchswe.utils.data import get_timeline
-from torchswe.utils.data import get_topography
+from torchswe.utils.data import get_topography, get_custom_topography
 from torchswe.utils.data import get_pointsource
 from torchswe.utils.data import get_frictionmodel
 from torchswe.utils.data import get_initial_states
@@ -238,7 +238,8 @@ def get_runtime(comm, config, logger):
     logger.info("Obtained a Timeline object")
 
     # get dem (digital elevation model); reuse the Domain object in the State object
-    runtime.topo = get_topography(config, states.domain)
+    #runtime.topo = get_topography(config, states.domain)
+    runtime.topo = get_custom_topography(config, states.domain)
     logger.info("Obtained a Topography object")
 
     # make sure initial depths are non-negative

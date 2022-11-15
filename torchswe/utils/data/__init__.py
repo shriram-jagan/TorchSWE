@@ -17,7 +17,7 @@ from torchswe.utils.data.grid import get_timeline
 from torchswe.utils.data.grid import get_domain
 
 from torchswe.utils.data.topography import Topography
-from torchswe.utils.data.topography import get_topography
+from torchswe.utils.data.topography import get_topography, get_custom_topography
 
 from torchswe.utils.data.states import States
 from torchswe.utils.data.states import get_empty_states

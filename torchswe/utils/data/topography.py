@@ -23,6 +23,7 @@ from mpi4py import MPI as _MPI
 from mpi4py.util.dtlib import from_numpy_dtype as _from_numpy_dtype
 from pydantic import root_validator as _root_validator
 from torchswe import nplike as _nplike
+from torchswe import is_backend_cunumeric 
 from torchswe.utils.config import BaseConfig as _BaseConfig
 from torchswe.utils.io import read_block as _read_block
 from torchswe.utils.misc import interpolate as _interpolate
@@ -31,7 +32,7 @@ from torchswe.utils.data.grid import Domain as _Domain
 from torchswe.utils.data.grid import get_domain as _get_domain
 
 
-_logger = _getLogger("torchswe.utils.data.topography")
+_logger = _getLogger()
 
 
 class Topography(_BaseConfig):
@@ -115,6 +116,42 @@ class Topography(_BaseConfig):
 
         return values
 
+def get_custom_topography(config: Config, domain: Domain):
+    """
+    A custom implementation of the topography generation step.
+    Instead of writing a h5 file with topography information 
+    and reading it back, the topography information
+    is generated during runtime.
+
+    The topography corresponds to that of case 3.1.3 from Delestre et al 2013
+    """
+
+    assert is_backend_cunumeric()
+    _logger.info("Using custom topography (Delestre et al., case 3.1.3)")
+
+    ny, nx = domain.shape
+    gny, gnx = domain.gshape
+    dtype = domain.dtype
+
+    # For cunumeric backend, the local and global number of points should be the same
+    assert nx == gnx, "local and global number of points in X direction are different!" 
+    assert ny == gny, "local and global number of points in Y direction are different!" 
+
+    x = _nplike.linspace(*config.spatial.domain[:2], nx+1, dtype=dtype)
+    y = _nplike.linspace(*config.spatial.domain[2:], ny+1, dtype=dtype)
+
+    # create 1D version of B first
+    topo = _nplike.zeros_like(x)
+    loc = (x >= 8.) * (x <= 12.)
+    topo[loc] = 0.2 - 0.05 * _nplike.power(x[loc]-10., 2)
+
+    # make it 2D
+    dem = _nplike.tile(topo, (y.size, 1))
+
+    topo = _setup_topography(domain, dem, x, y)
+
+    return topo 
+
 
 def get_topography(config: Config, domain: Domain = None, comm: MPI.Comm = None):
     """Read local topography elevation data from a file.
@@ -188,6 +225,8 @@ def _exchange_topo_vertices(domain: Domain, vertices: ndarray):
     """Exchange the halo ring information of vertices.
     """
 
+    # this will work only for single rank runs for numpy and cupy backends
+    # this is done to compare backends
     if _nplike.__name__ == "cunumeric" or _nplike.__name__ == "numpy" or _nplike.__name__ == "cupy":
         return vertices
 
