@@ -10,7 +10,6 @@
 """
 import os as _os
 from operator import itemgetter as _itemgetter
-from mpi4py import MPI as _MPI
 from torchswe.utils.config import BCConfig as _BCConfig
 from torchswe.utils.data import Topography as _Topography
 from torchswe.utils.data import States as _States
