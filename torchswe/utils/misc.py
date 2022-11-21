@@ -12,7 +12,6 @@ import logging as _logging
 import collections as _collections
 
 from scipy.interpolate import RectBivariateSpline as _RectBivariateSpline
-from mpi4py import MPI as _MPI
 from torchswe import nplike as _nplike
 
 
@@ -254,49 +253,6 @@ def cal_neighbors(pnx: int, pny: int, pi: int, pj: int, rank: int):
     return west, east, south, north
 
 
-def set_device(comm: _MPI.Comm):
-    """Set the GPU device ID for this rank when using CuPy backend.
-
-    We try our best to make neighber ranks use the same GPU.
-
-    Arguments
-    ---------
-    comm : mpi4py.MPI.Comm
-        The communicator.
-    """
-
-    assert _nplike.__name__ == "cupy", "This function only works with CuPy backend."
-
-    # SJ: for now, we run on just one GPU w/o MPI, so just make it use the first GPU
-    if 1:
-        _nplike.cuda.runtime.setDevice(0)
-        return
-
-    # get number of GPUs on this particular compute node
-    n_gpus = _nplike.cuda.runtime.getDeviceCount()
-
-    # get the info of this rank on this local compute node
-    local_name = _MPI.Get_processor_name()
-    local_comm = comm.Split_type(_MPI.COMM_TYPE_SHARED)
-    local_size = local_comm.Get_size()
-    local_rank = local_comm.Get_rank()
-
-    # set the corresponding gpu id for this rank
-    group_size = local_size // n_gpus
-    remains = local_size % n_gpus
-
-    if local_rank < (group_size + 1) * remains:  # groups having 1 more rank 'cause of the remainder
-        my_gpu = local_rank // (group_size + 1)
-    else:
-        my_gpu = (local_rank - remains) // group_size
-
-    _nplike.cuda.runtime.setDevice(my_gpu)
-
-    _logger.debug(
-        "node name: %s; local size:%d; local rank: %d; gpu id: %d",
-        local_name, local_size, local_rank, my_gpu)
-
-
 def find_cell_index(x, lower, upper, delta):
     """Find the local index in 1D so that lower + i * delta <= x < lower + (i + 1) * delta.
 
@@ -383,20 +339,7 @@ def exchange_states(states):
     if _nplike.__name__ == "cunumeric" or _nplike.__name__ == "numpy":
         return states
 
-    # alias
-    domain = states.domain
-    cnsrv = states.q
-    osc = states.osc
-
     # make sure all calculations updating states.q are done
-    _nplike.sync()
-
-    # start one-sided communication
-    for k in ("s", "n", "w", "e"):
-        osc.q.win.Put([cnsrv, osc.q[f"{k}s"]], domain[k], [0, 1, osc.q[f"{k}r"]])
-    osc.q.win.Fence()
-
-    # theroretically, this sync should not be neeeded, but just in case
     _nplike.sync()
 
     return states

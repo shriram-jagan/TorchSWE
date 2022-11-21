@@ -15,12 +15,9 @@ if _TYPE_CHECKING:  # if we are having type checking, then we import correspondi
     from torchswe.nplike import ndarray
     from torchswe.utils.config import Config
     from torchswe.utils.data.grid import Domain
-    from mpi4py import MPI
 
 # pylint: disable=wrong-import-position, ungrouped-imports
 from logging import getLogger as _getLogger
-from mpi4py import MPI as _MPI
-from mpi4py.util.dtlib import from_numpy_dtype as _from_numpy_dtype
 from pydantic import root_validator as _root_validator
 from torchswe import nplike as _nplike
 from torchswe import is_backend_cunumeric 
@@ -153,17 +150,15 @@ def get_custom_topography(config: Config, domain: Domain):
     return topo 
 
 
-def get_topography(config: Config, domain: Domain = None, comm: MPI.Comm = None):
+def get_topography(config: Config, domain: Domain = None):
     """Read local topography elevation data from a file.
     """
 
     # alias
     topocfg = config.topo
 
-    # if domain is not provided, get a new one
-    if domain is None:
-        comm = _MPI.COMM_WORLD if comm is None else comm
-        domain = _get_domain(comm, config)
+    # SJ
+    assert domain is not None
 
     # get dem (digital elevation model); assume dem values defined at cell centers
     dem = _read_block(topocfg.file, topocfg.xykeys, topocfg.key, domain.lextent_v, domain)
@@ -201,9 +196,6 @@ def _setup_topography(domain, elev, demx, demy):
     else:  # no need for interpolation
         vert[domain.nonhalo_v] = elev.astype(dtype)
 
-    # exchange vertices' elevations in halo rings
-    vert = _exchange_topo_vertices(domain, vert)
-
     # topography elevation at cell centers through linear interpolation
     cntr = (vert[:-1, :-1] + vert[:-1, 1:] + vert[1:, :-1] + vert[1:, 1:]) / 4.
 
@@ -220,54 +212,3 @@ def _setup_topography(domain, elev, demx, demy):
     # initialize DataModel and let pydantic validates data
     return Topography(domain=domain, v=vert, c=cntr, xf=xface, yf=yface, grad=grad)
 
-
-def _exchange_topo_vertices(domain: Domain, vertices: ndarray):
-    """Exchange the halo ring information of vertices.
-    """
-
-    # this will work only for single rank runs for numpy and cupy backends
-    # this is done to compare backends
-    if _nplike.__name__ == "cunumeric" or _nplike.__name__ == "numpy" or _nplike.__name__ == "cupy":
-        return vertices
-
-    assert len(vertices.shape) == 2
-    assert vertices.shape == tuple(i+1 for i in domain.hshape)
-
-    # aliases
-    nhalo = domain.nhalo
-    hshape = vertices.shape  # vertices has one more element in both x and y
-    ny, nx = hshape[0] - 2 * nhalo, hshape[1] - 2 * nhalo
-    ybg, yed = nhalo, nhalo + ny
-    xbg, xed = nhalo, nhalo + nx
-    fp_t: _MPI.Datatype = _from_numpy_dtype(domain.dtype)
-
-    # make sure all GPU calculations are done
-    _nplike.sync()
-
-    # sending buffer datatypes
-    send_t = _DummyDict()
-    send_t.s = fp_t.Create_subarray(hshape, (nhalo, nx), (ybg+1, xbg)).Commit()
-    send_t.n = fp_t.Create_subarray(hshape, (nhalo, nx), (yed-nhalo-1, xbg)).Commit()
-    send_t.w = fp_t.Create_subarray(hshape, (ny, nhalo), (ybg, xbg+1)).Commit()
-    send_t.e = fp_t.Create_subarray(hshape, (ny, nhalo), (ybg, xed-nhalo-1)).Commit()
-
-    # receiving buffer datatypes
-    recv_t = _DummyDict()
-    recv_t.s = fp_t.Create_subarray(hshape, (nhalo, nx), (0, xbg)).Commit()
-    recv_t.n = fp_t.Create_subarray(hshape, (nhalo, nx), (yed, xbg)).Commit()
-    recv_t.w = fp_t.Create_subarray(hshape, (ny, nhalo), (ybg, 0)).Commit()
-    recv_t.e = fp_t.Create_subarray(hshape, (ny, nhalo), (ybg, xed)).Commit()
-
-    # send & receive
-    reqs = []
-    reqs.append(domain.comm.Isend([vertices, 1, send_t.s], domain.s, 10))
-    reqs.append(domain.comm.Isend([vertices, 1, send_t.n], domain.n, 11))
-    reqs.append(domain.comm.Isend([vertices, 1, send_t.w], domain.w, 12))
-    reqs.append(domain.comm.Isend([vertices, 1, send_t.e], domain.e, 13))
-    reqs.append(domain.comm.Irecv([vertices, 1, recv_t.s], domain.s, 11))
-    reqs.append(domain.comm.Irecv([vertices, 1, recv_t.n], domain.n, 10))
-    reqs.append(domain.comm.Irecv([vertices, 1, recv_t.w], domain.w, 13))
-    reqs.append(domain.comm.Irecv([vertices, 1, recv_t.e], domain.e, 12))
-    _MPI.Request.Waitall(reqs)
-
-    return vertices

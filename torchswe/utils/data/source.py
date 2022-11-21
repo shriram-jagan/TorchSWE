@@ -11,7 +11,6 @@
 from __future__ import annotations as _annotations  # allows us not using quotation marks for hints
 from typing import TYPE_CHECKING as _TYPE_CHECKING  # indicates if we have type checking right now
 if _TYPE_CHECKING:  # if we are having type checking, then we import corresponding classes/types
-    from mpi4py import MPI
     from torchswe.utils.config import Config
     from torchswe.utils.data.grid import Domain
 
@@ -19,7 +18,6 @@ if _TYPE_CHECKING:  # if we are having type checking, then we import correspondi
 from logging import getLogger as _getLogger
 from typing import Tuple as _Tuple
 from typing import Callable as _Callable
-from mpi4py import MPI as _MPI
 from pydantic import conint as _conint
 from pydantic import confloat as _confloat
 from pydantic import validator as _validator
@@ -91,7 +89,7 @@ class FrictionModel(_BaseConfig):
         return val
 
 
-def get_pointsource(config: Config, irate: int = 0, domain: Domain = None, comm: MPI.Comm = None):
+def get_pointsource(config: Config, irate: int = 0, domain: Domain = None):
     """Get a PointSource instance.
 
     Arguments
@@ -102,8 +100,6 @@ def get_pointsource(config: Config, irate: int = 0, domain: Domain = None, comm:
         The index of the current flow rate in the list of `rates`.
     domain : torchswe.utils.data.Domain
         The object describing grids and domain decomposition.
-    comm : mpi4py.MPI.Comm
-        The communicator to be used if domain is None.
 
     Returns
     -------
@@ -119,10 +115,8 @@ def get_pointsource(config: Config, irate: int = 0, domain: Domain = None, comm:
     # to hold data for initializing a PointSource instance
     data = _DummyDict()
 
-    # if domain is not provided, get a new one
-    if domain is None:
-        comm = _MPI.COMM_WORLD if comm is None else comm
-        domain = _get_domain(comm, config)
+    # SJ; 
+    assert domain is not None
 
     # aliases
     extent = domain.lextent  # west, east, south, north
@@ -157,7 +151,7 @@ def get_pointsource(config: Config, irate: int = 0, domain: Domain = None, comm:
     return PointSource(**data)
 
 
-def get_frictionmodel(config: Config, domain: Domain = None, comm: MPI.Comm = None):
+def get_frictionmodel(config: Config, domain: Domain = None):
     """Get a FrictionModel instance.
 
     Arguments
@@ -166,8 +160,6 @@ def get_frictionmodel(config: Config, domain: Domain = None, comm: MPI.Comm = No
         The configuration of a case.
     domain : torchswe.utils.data.Domain
         The object describing grids and domain decomposition.
-    comm : mpi4py.MPI.Comm
-        The communicator to be used if domain is None.
 
     Returns
     -------
@@ -180,12 +172,9 @@ def get_frictionmodel(config: Config, domain: Domain = None, comm: MPI.Comm = No
     # to hold data for initializing a FrictionModel instance
     data = _DummyDict()
 
-    # if domain is not provided, get a new one
-    if domain is None:
-        comm = _MPI.COMM_WORLD if comm is None else comm
-        data.domain = domain = _get_domain(comm, config)
-    else:
-        data.domain = domain
+    # SJ
+    assert domain is not None
+    data.domain = domain
 
     # set the model
     data.model = _friction_model_selector(fcfg.model)

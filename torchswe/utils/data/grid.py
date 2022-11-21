@@ -11,7 +11,6 @@
 from __future__ import annotations as _annotations  # allows us not using quotation marks for hints
 from typing import TYPE_CHECKING as _TYPE_CHECKING  # indicates if we have type checking right now
 if _TYPE_CHECKING:  # if we are having type checking, then we import corresponding classes/types
-    from mpi4py import MPI
     from torchswe.utils.config import Config
 
 # pylint: disable=wrong-import-position, ungrouped-imports
@@ -22,8 +21,6 @@ from typing import Tuple as _Tuple
 from typing import Union as _Union
 from typing import Any as _Any
 
-from mpi4py import MPI as _MPI
-from mpi4py.util.dtlib import from_numpy_dtype as _from_numpy_dtype
 from pydantic import validator as _validator
 from pydantic import conint as _conint
 from pydantic import confloat as _confloat
@@ -171,25 +168,10 @@ class Domain(_BaseConfig):
 
     Attributes
     ----------
-    comm : mpi4py.MPI.Cartcomm
-        The object holding MPI communicator (in a Cartesian topology).
-    e, w, s, n : int
-        The ranks of the neighbors. If the neighbor does not exist (e.g., a boundary rank), then
-        its value will be `mpi4py.MPI.PROC_NULL`. These characters stand for east, west, south, and
-        north.
     x, y : Gridline object
         x and y grindline coordinates.
     """
 
-    # mpi communicator
-    comm: _Any 
-    #comm: _MPI.Cartcomm # comm will be None for cunumeric backend
-
-    # neighbors
-    e: _Union[_conint(ge=0), _Literal[_MPI.PROC_NULL]]
-    w: _Union[_conint(ge=0), _Literal[_MPI.PROC_NULL]]
-    s: _Union[_conint(ge=0), _Literal[_MPI.PROC_NULL]]
-    n: _Union[_conint(ge=0), _Literal[_MPI.PROC_NULL]]
 
     # gridlines
     x: Gridline
@@ -215,104 +197,6 @@ class Domain(_BaseConfig):
         """Validate effxed and effyed."""
         assert val - values["effybg"] == values["y"].n, "effyed - effybg != y.n"
         return val
-
-    @_root_validator(pre=False, skip_on_failure=True)
-    def _val_indices(cls, values):  # pylint: disable=no-self-argument, no-self-use
-
-        # aliases
-        jbg, jed = values["y"].ibegin, values["y"].iend
-        ibg, ied = values["x"].ibegin, values["x"].iend
-
-        # send-recv indices range from neighbors
-        sendbuf = _nplike.tile(_nplike.array((jbg, jed, ibg, ied), dtype=int), (4,))
-        recvbuf = _nplike.full(16, -999, dtype=int)
-        mpitype = _from_numpy_dtype(sendbuf.dtype)
-        _nplike.sync()
-
-        if _nplike.__name__ == "cunumeric" or _nplike.__name__ == "numpy" or _nplike.__name__ == "cupy":
-            return values
-        else:
-           values["comm"].Neighbor_alltoall([sendbuf, mpitype], [recvbuf, mpitype])
-
-        # answers
-        inds = {"s": (1, 2, 3), "n": (0, 2, 3), "w": (0, 1, 3), "e": (0, 1, 2), }
-        ans = {
-            "s": _nplike.array((jbg, ibg, ied), dtype=int),
-            "n": _nplike.array((jed, ibg, ied), dtype=int),
-            "w": _nplike.array((jbg, jed, ibg), dtype=int),
-            "e": _nplike.array((jbg, jed, ied), dtype=int),
-        }
-
-        # check the values
-        for i, ornt in enumerate(("s", "n", "w", "e")):
-            if values[ornt] == _MPI.PROC_NULL:
-                assert all(recvbuf[i*4:(i+1)*4] == -999), f"{ornt}, {recvbuf[i*4:(i+1)*4]}"
-            else:
-                if values["comm"].periods[i//2] == 0:  # regular bc
-                    assert all(recvbuf[i*4:(i+1)*4].take(inds[ornt]) == ans[ornt]), \
-                        f"{ornt}, {recvbuf[i*4:(i+1)*4].take(inds[ornt])}, {ans[ornt]}"
-                else:
-                    pass  # periodic bc; haven't come up w/ a good way to check
-
-        return values
-
-    @_root_validator(pre=False, skip_on_failure=True)
-    def _val_bounds(cls, values):  # pylint: disable=no-self-argument, no-self-use
-
-        # aliases
-        jbg, jed = values["y"].lower, values["y"].upper
-        ibg, ied = values["x"].lower, values["x"].upper
-        dtype = values["x"].c.dtype
-
-        # send-recv indices range from neighbors
-        sendbuf = _nplike.tile(_nplike.array((jbg, jed, ibg, ied), dtype=dtype), (4,))
-        recvbuf = _nplike.full(16, float("NaN"), dtype=dtype)
-        mpitype = _from_numpy_dtype(dtype)
-        _nplike.sync()
-
-        if _nplike.__name__ == "cunumeric" or _nplike.__name__ == "numpy" or _nplike.__name__ == "cupy":
-            return values
-        else:
-              values["comm"].Neighbor_alltoall([sendbuf, mpitype], [recvbuf, mpitype])
-
-        # answers
-        inds = {"s": (1, 2, 3), "n": (0, 2, 3), "w": (0, 1, 3), "e": (0, 1, 2), }
-        ans = {
-            "s": _nplike.array((jbg, ibg, ied), dtype=dtype),
-            "n": _nplike.array((jed, ibg, ied), dtype=dtype),
-            "w": _nplike.array((jbg, jed, ibg), dtype=dtype),
-            "e": _nplike.array((jbg, jed, ied), dtype=dtype),
-        }
-
-        # check the values
-        for i, ornt in enumerate(("s", "n", "w", "e")):
-            if values[ornt] == _MPI.PROC_NULL:
-                assert all(recvbuf[i*4:(i+1)*4] != recvbuf[i*4:(i+1)*4]), \
-                    f"{ornt}, {recvbuf[i*4:(i+1)*4]}"  # for nan, self != self
-            else:
-                if values["comm"].periods[i//2] == 0:  # regular bc
-                    assert all(recvbuf[i*4:(i+1)*4].take(inds[ornt]) == ans[ornt]), \
-                        f"{ornt}, {recvbuf[i*4:(i+1)*4].take(inds[ornt])}, {ans[ornt]}"
-                else:
-                    pass  # periodic bc; haven't come up w/ a good way to check
-
-        return values
-
-    @_root_validator(pre=False, skip_on_failure=True)
-    def _val_delta(cls, values):  # pylint: disable=no-self-argument, no-self-use
-
-        if _nplike.__name__ == "cunumeric" or _nplike.__name__ == "numpy" or _nplike.__name__ == "cupy":
-            return values
-
-        # check dx
-        dxs = values["comm"].allgather(values["x"].delta)
-        assert all(dx == values["x"].delta for dx in dxs), "Not all ranks have the same dx."
-
-        # check dy
-        dys = values["comm"].allgather(values["y"].delta)
-        assert all(dy == values["y"].delta for dy in dys), "Not all ranks have the same dy."
-
-        return values
 
     @property
     def dtype(self):
@@ -400,13 +284,11 @@ class Domain(_BaseConfig):
         return (slice(self.y.ibegin, self.y.iend+1), slice(self.x.ibegin, self.x.iend))
 
 
-def get_gridline_x(comm: MPI.Cartcomm, config: Config):
+def get_gridline_x(config: Config):
     """Get a Gridline instance in x direction.
 
     Arguments
     ---------
-    comm : mpi4py.MPI.Cartcomm
-        The Cartesian communicator describing the topology.
     config : torchswe.utils.config.Config
         The configuration of a case.
 
@@ -414,9 +296,6 @@ def get_gridline_x(comm: MPI.Cartcomm, config: Config):
     -------
     gridline : torchswe.utils.data.grid.Gridline
     """
-
-    if not is_backend_cunumeric():
-        assert isinstance(comm, _MPI.Cartcomm), "The communicator must be a Cartesian communicator."
 
     arg         = _DummyDict()
     arg.axis    = "x"
@@ -426,10 +305,7 @@ def get_gridline_x(comm: MPI.Cartcomm, config: Config):
     arg.delta   = (arg.gupper - arg.glower) / arg.gn
     arg.dtype   = _DummyDtype.validator(config.params.dtype)
 
-    if is_backend_cunumeric():
-        arg.n, arg.ibegin, arg.iend = _cal_local_gridline_range(1, 0, arg.gn)
-    else:
-        arg.n, arg.ibegin, arg.iend = _cal_local_gridline_range(comm.dims[1], comm.coords[1], arg.gn)
+    arg.n, arg.ibegin, arg.iend = _cal_local_gridline_range(1, 0, arg.gn)
 
     arg.lower                   = arg.ibegin * arg.delta + arg.glower
     arg.upper                   = arg.iend * arg.delta + arg.glower
@@ -442,13 +318,11 @@ def get_gridline_x(comm: MPI.Cartcomm, config: Config):
     return Gridline(**arg)
 
 
-def get_gridline_y(comm: MPI.Cartcomm, config: Config):
+def get_gridline_y(config: Config):
     """Get a Gridline instance in y direction.
 
     Arguments
     ---------
-    comm : mpi4py.MPI.Cartcomm
-        The Cartesian communicator describing the topology (order: ny and then nx).
     config : torchswe.utils.config.Config
         The configuration of a case.
 
@@ -456,9 +330,6 @@ def get_gridline_y(comm: MPI.Cartcomm, config: Config):
     -------
     gridline : torchswe.utils.data.grid.Gridline
     """
-
-    if not is_backend_cunumeric():
-        assert isinstance(comm, _MPI.Cartcomm), "The communicator must be a Cartesian communicator."
 
     arg         = _DummyDict()
     arg.axis    = "y"
@@ -468,11 +339,7 @@ def get_gridline_y(comm: MPI.Cartcomm, config: Config):
     arg.delta   = (arg.gupper - arg.glower) / arg.gn
     arg.dtype   = _DummyDtype.validator(config.params.dtype)
 
-
-    if is_backend_cunumeric():
-        arg.n, arg.ibegin, arg.iend = _cal_local_gridline_range(1, 0, arg.gn)
-    else:
-        arg.n, arg.ibegin, arg.iend = _cal_local_gridline_range(comm.dims[0], comm.coords[0], arg.gn)
+    arg.n, arg.ibegin, arg.iend = _cal_local_gridline_range(1, 0, arg.gn)
 
     arg.lower                   = arg.ibegin * arg.delta + arg.glower
     arg.upper                   = arg.iend * arg.delta + arg.glower
@@ -537,14 +404,11 @@ def get_timeline(config: Config):
     return Timeline(values=t, save=save)
 
 
-def get_domain(comm: MPI.Comm, config: Config):
+def get_domain(config: Config):
     """Get an instance of Domain for the current MPI rank.
 
     Arguments
     ---------
-    comm : mpi4py.MPI.Comm
-        The communicator. Should just be a general communicator. And a Cartcomm will be created
-        automatically in this function from the provided general Comm.
     config : torchswe.utils.config.Config
         The configuration of a case.
 
@@ -559,29 +423,9 @@ def get_domain(comm: MPI.Comm, config: Config):
     # to hold data for initializing a Domain instance
     data = _DummyDict()
 
-    # cunumeric backend should not use cartesian comm, so don't create communicator 
-    if is_backend_cunumeric():
-        data.comm = None
-    else:
-        # only when the provided communicator is not a Cartesian communicator
-        if not isinstance(comm, _MPI.Cartcomm):
-            # evaluate the number of ranks in x/y direction and get a Cartesian topology communicator
-            pnx, pny = _cal_num_procs(comm.Get_size(), *config.spatial.discretization)
-            data.comm = comm.Create_cart((pny, pnx), period, True)
-        else:
-            data.comm = comm
-
-    # find the rank of neighbors
-    if is_backend_cunumeric():
-        data.s, data.n = _MPI.PROC_NULL, _MPI.PROC_NULL
-        data.w, data.e = _MPI.PROC_NULL, _MPI.PROC_NULL 
-    else:
-        data.s, data.n = data.comm.Shift(0, 1)
-        data.w, data.e = data.comm.Shift(1, 1)
-
     # get local gridline
-    data.x = get_gridline_x(data.comm, config)
-    data.y = get_gridline_y(data.comm, config)
+    data.x = get_gridline_x(config)
+    data.y = get_gridline_y(config)
 
     # halo-ring related
     data.nhalo = 2

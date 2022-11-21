@@ -18,18 +18,15 @@ import pathlib
 import argparse
 
 # due to openmpi's problematic implementation of one-sided communication
-import mpi4py
-mpi4py.rc.threads = False
 
-from mpi4py import MPI
 from torchswe import nplike
+from torchswe import is_backend_cunumeric
 from torchswe.utils.data import get_timeline
 from torchswe.utils.data import get_topography, get_custom_topography
 from torchswe.utils.data import get_pointsource
 from torchswe.utils.data import get_frictionmodel
 from torchswe.utils.data import get_initial_states
 from torchswe.utils.misc import DummyDict
-from torchswe.utils.misc import set_device
 from torchswe.utils.misc import exchange_states
 from torchswe.utils.io import write_snapshot
 from torchswe.utils.io import read_snapshot
@@ -221,13 +218,12 @@ def get_logger(filename, level, mpi_size, mpi_rank):
     return logger
 
 
-def get_runtime(comm, config, logger):
+def get_runtime(config, logger):
     """Get a runtime object.
     """
 
     # get initial solution object
-    states = get_initial_states(config, comm=comm)  # let the function create a new Domain in States
-    #states = get_initial_states(config, comm=None)  # let the function create a new Domain in States
+    states = get_initial_states(config)  # let the function create a new Domain in States
     logger.info("Obtained an initial solution object")
 
     # `runtime` holds things not available in config.yaml or may change during runtime
@@ -300,13 +296,11 @@ def get_runtime(comm, config, logger):
     return states, runtime
 
 
-def init(comm, args=None):
+def init(args=None):
     """Initialize a simulation.
 
     Attributes
     ----------
-    comm : mpi4py.MPI.Comm
-        The communicator.
     args : None or argparse.Namespace
         By default, None means getting arguments from command-line. Only use this for debugging.
 
@@ -324,13 +318,9 @@ def init(comm, args=None):
         A dictionary-like object holding auxiliary data/information required during runtime.
     """
 
-    # MPI size & rank
-    if nplike.__name__ != "cunumeric" and nplike.__name__ != "numpy" and nplike.__name__ != "cupy":
-        size = comm.Get_size()
-        rank = comm.Get_rank()
-    else:
-        size = 1
-        rank = 0
+    # size & rank
+    size = 1
+    rank = 0
 
     # get cmd arguments
     args = get_cmd_arguments() if args is None else args
@@ -338,15 +328,11 @@ def init(comm, args=None):
     # setup the top-level (i.e., package-level/torchswe) logger
     logger = get_logger(args.log_file, args.log_level, size, rank)
 
-    # set GPU id
-    if nplike.__name__ == "cupy":
-        set_device(comm)
-
     # get configuration
     config = get_final_config(args)
 
     # get states and runtime data holder
-    states, runtime = get_runtime(comm, config, logger)
+    states, runtime = get_runtime(config, logger)
 
     return args, config, logger, states, runtime
 
@@ -389,11 +375,10 @@ def restart(states, runtime, config, cont, logger):
 def main():
     """Main function."""
 
-    # mpi communicator
-    comm = MPI.COMM_WORLD
+    assert is_backend_cunumeric(), "Only cuNumeric backend is supported in this branch." 
 
     # initialize
-    args, config, logger, soln, runtime = init(comm)
+    args, config, logger, soln, runtime = init()
     logger.info("Done initialization.")
 
     # log the backend

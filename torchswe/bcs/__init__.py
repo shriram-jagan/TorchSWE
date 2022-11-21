@@ -67,11 +67,6 @@ def get_ghost_cell_updaters(states: _States, topo: _Topography, bcs: _BCConfig):
 
     for ornt, bc in zip(orientations, _itemgetter(*orientations)(bcs)):
 
-        # not on the physical boundary: skip
-        # ----------------------------------
-        if states.domain[ornt[0]] != _MPI.PROC_NULL:
-            continue
-
         # special case: periodic BC
         # -------------------------
         # In MPI cases, periodic boundaries will be handled by internal exchange stage
