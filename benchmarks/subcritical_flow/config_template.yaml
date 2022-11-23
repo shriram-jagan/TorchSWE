@@ -1,0 +1,50 @@
+# Delestre et al. (2013): case 3.1.3; subcritical flow over a bump
+# Keywords NX, NY, NSTEPS, TIME_STEP need to be updated.
+--- !Config
+
+# spatial information
+spatial:
+  domain: [0.0, 25.0, 0.0, 5.0]  # [west, east, south, north]
+  discretization: [NX, NY]      # [N_{west<->east}, N_{north<->south}]
+
+# temporal control, including writting result during a simulation
+temporal:
+  output: ["t_start n_steps no save", 0., NSTEPS]
+  scheme: "SSP-RK2"
+  adaptive: False
+  max_iters: 1
+  dt: TIME_STEP
+
+# boundary conditions
+boundary:
+  west:
+    types: ["extrap", "const", "extrap"]  # periodic/extrap/outflow/inflow/const
+    values: [null, 4.42, null]            # only used by const/inflow
+  east:
+    types: ["const", "extrap", "extrap"]
+    values: [2.0, null, null]
+  north:
+    types: ["extrap", "extrap", "extrap"]
+    values: [null, null, null]
+  south:
+    types: ["extrap", "extrap", "extrap"]
+    values: [null, null, null]
+
+# initial condition
+initial:
+  values: [2.0, 0.0, 0.0]
+
+# topography
+topography:
+  file: "topo.h5"       # relative to case folder or absolute path
+  xykeys: ["x", "y"]    # keys/paths to x and y gridline coordinates
+  key: elevation        # the corresponding variable name in the NetCDF file
+
+# other parameters
+parameters:
+  gravity: 9.81   # gravity (m/s^2)
+  theta: 1.3      # control numerical dissipation
+  dry tolerance: 1.0e-6  # dry tolerance
+
+# any Python script that should be executed prior running the solver
+prehook: null
