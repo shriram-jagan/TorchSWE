@@ -24,7 +24,7 @@ from torchswe.fvm import prepare_rhs as _prepare_rhs
 from torchswe.utils.misc import exchange_states as _exchange_states
 from torchswe.kernels import reconstruct_cell_centers as _reconstruct_cell_centers
 
-_logger = _logging.getLogger()
+_logger = _logging.getLogger("torchswe.temporal")
 
 
 def _cfl_dt_adapter(delta_t: float, max_dt: float, coeff: float):

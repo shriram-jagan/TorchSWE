@@ -13,7 +13,6 @@
 import time as wtime
 from torchswe.utils.timing import time
 import logging
-logging.basicConfig(filename='example.log', encoding='utf-8', level=logging.DEBUG)
 import pathlib
 import argparse
 

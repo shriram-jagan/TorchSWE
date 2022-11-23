@@ -34,7 +34,7 @@ from torchswe.utils.data.grid import Domain as _Domain
 from torchswe.utils.data.grid import get_domain as _get_domain
 
 
-_logger = _getLogger("torchswe.utils.data.topography")
+_logger = _getLogger("torchswe.utils.data.states")
 
 
 def _pydantic_val_nan_inf(val, field):

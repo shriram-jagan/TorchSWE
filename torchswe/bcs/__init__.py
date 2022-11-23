@@ -15,7 +15,7 @@ from torchswe.utils.data import Topography as _Topography
 from torchswe.utils.data import States as _States
 import logging
 
-logger = logging.getLogger()
+logger = logging.getLogger("torchswe.bcs")
 
 if "USE_CUPY" in _os.environ and _os.environ["USE_CUPY"] == "1":
     from ._cupy_outflow import outflow_bc_factory  # pylint: disable=no-name-in-module
