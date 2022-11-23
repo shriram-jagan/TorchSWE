@@ -35,7 +35,6 @@ from torchswe.kernels import reconstruct_cell_centers
 from torchswe.bcs import get_ghost_cell_updaters
 from torchswe.temporal import euler, ssprk2, ssprk3
 from torchswe.sources import topography_gradient, point_mass_source, friction, zero_stiff_terms
-import pickle as pkl
 
 # enforce print precision
 nplike.set_printoptions(precision=15, linewidth=200)
@@ -318,7 +317,7 @@ def init(args=None):
         A dictionary-like object holding auxiliary data/information required during runtime.
     """
 
-    # size & rank
+    # TODO: update size & rank from input args
     size = 1
     rank = 0
 
@@ -399,10 +398,6 @@ def main():
     else:
         logger.info("No need to save data for \"no save\" method or for a continued run.")
 
-    # initialize counter and performance profiling variable
-    #perf_t0 = time.time()  # suppose to be wall time
-    #logger.info("Time marching starts at %s", time.ctime(perf_t0))
-
     perf_t0 = time()
 
     # start running time marching until each output time
@@ -424,28 +419,6 @@ def main():
     logger.info("Done time marching.")
     logger.info("Run time (wall time): %s seconds", (time()-perf_t0)/1e6)
     logger.info("Program ends now.")
-
-    #logger.info("Done time marching.")
-    #logger.info("Run time (wall time): %s seconds", time.time()-perf_t0)
-    #logger.info("Program ends now.")
-
-    # this could go in config file
-    dump_pkl = False
-    if dump_pkl:
-
-        print("Domain nonhalo_c: ", soln.domain.nonhalo_c, (0,) + soln.domain.nonhalo_c)
-        d = {'w': soln.q[(0,) + soln.domain.nonhalo_c],
-            'hu': soln.q[(1,) + soln.domain.nonhalo_c],
-            'hv': soln.q[(2,) + soln.domain.nonhalo_c],
-            'h':  soln.p[(0,) + soln.domain.nonhalo_c],
-            'u':  soln.p[(1,) + soln.domain.nonhalo_c],
-            'v':  soln.p[(2,) + soln.domain.nonhalo_c],
-            'x':  soln.domain.x.v,
-            'dx': soln.domain.x.delta,
-            'dy': soln.domain.y.delta,
-            }
-        f = str(nplike.__name__) + '_allvars.pkl'
-        pkl.dump(d, open(f, "wb"))
 
     return 0
 
