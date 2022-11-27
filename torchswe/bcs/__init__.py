@@ -26,13 +26,59 @@ elif (
     ("LEGATE_MAX_DIM" in _os.environ and "LEGATE_MAX_FIELDS" in _os.environ) or
     ("USE_TORCH" in _os.environ and _os.environ["USE_TORCH"] == "1")
 ):
-    from ._cunumeric_linear_extrap import linear_extrap_bc_factory  # pylint: disable=no-name-in-module
-    from ._cunumeric_const_val import const_val_bc_factory  # pylint: disable=no-name-in-module
+    from .cunumeric_linear_extrap import linear_extrap_bc_factory  # pylint: disable=no-name-in-module
+    from .cunumeric_const_val import const_val_bc_factory  # pylint: disable=no-name-in-module
 else:
     from ._cython_outflow import outflow_bc_factory  # pylint: disable=no-name-in-module
     from ._cython_linear_extrap import linear_extrap_bc_factory  # pylint: disable=no-name-in-module
     from ._cython_const_val import const_val_bc_factory  # pylint: disable=no-name-in-module
     from ._cython_inflow import inflow_bc_factory  # pylint: disable=no-name-in-module
+
+
+def init_bc(states: _States, topo: _Topography, bcs: _BCConfig):
+    """ This is supposed to take care of the initialization of all
+    boundaries and variables.
+
+    Returns: List[BCConfig]
+        A list of BCConfig which when invoked updates the boundary 
+        conditions for all variables and boundaries
+    """
+
+    orientations = ["west", "east", "south", "north"]
+    funcs = []
+    for ornt, bc in zip(orientations, _itemgetter(*orientations)(bcs)):
+        for i, (bctp, bcv) in enumerate(zip(bc.types, bc.values)):
+            logger.info("Ghost cell update for ornt %s and BC %s", ornt, bctp)
+
+            # linear extrapolation BC
+            if bctp == "extrap":
+                funcs.append(linear_extrap_bc_factory(ornt, i, states, topo))
+
+            # constant, i.e., Dirichlet
+            elif bctp == "const":
+                funcs.append(const_val_bc_factory(ornt, i, states, topo, bcv))
+
+            else:
+                print("ERROR: Unsupported boundary condition.")
+
+    return funcs
+
+
+def setup_bc(states: _States, topo: _Topography, bcs: _BCConfig):
+
+    funcs = init_bc(states, topo, bcs)
+
+    # this is the function that will be retuned by this function factory
+    def updater(soln: _States):
+        for func in funcs:  # if funcs is an empty list, this will skip it
+            if func is not None:
+                func()
+        return soln
+
+    # store the functions as an attribute for debug
+    updater.funcs = funcs
+
+    return updater
 
 def get_ghost_cell_updaters(states: _States, topo: _Topography, bcs: _BCConfig):
     """A function factory returning a function that updates all ghost cells.

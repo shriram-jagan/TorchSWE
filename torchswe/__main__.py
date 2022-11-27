@@ -31,7 +31,7 @@ from torchswe.utils.io import write_snapshot
 from torchswe.utils.io import read_snapshot
 from torchswe.utils.config import get_config
 from torchswe.kernels import reconstruct_cell_centers
-from torchswe.bcs import get_ghost_cell_updaters
+from torchswe.bcs import setup_bc 
 from torchswe.temporal import euler, ssprk2, ssprk3
 from torchswe.sources import topography_gradient, point_mass_source, friction, zero_stiff_terms
 
@@ -271,7 +271,9 @@ def get_runtime(config, logger):
     runtime.marching = MARCHING_OPTIONS[config.temporal.scheme]  # time marching scheme
     logger.info("Time marching scheme: %s", config.temporal.scheme)
 
-    runtime.gh_updater = get_ghost_cell_updaters(states, runtime.topo, config.bc)
+    runtime.gh_updater = setup_bc(states, runtime.topo, config.bc)
+
+    #runtime.gh_updater = get_ghost_cell_updaters(states, runtime.topo, config.bc)
     logger.info("Done setting ghost cell updaters")
 
     runtime.sources = [topography_gradient]
