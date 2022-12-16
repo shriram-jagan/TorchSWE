@@ -74,7 +74,10 @@ def prepare_rhs(states: States, runtime: DummyDict, config: Config):
     amax = _nplike.max(_nplike.maximum(states.face.x.plus.a, -states.face.x.minus.a))
     bmax = _nplike.max(_nplike.maximum(states.face.y.plus.a, -states.face.y.minus.a))
 
-    with _nplike.errstate(divide="ignore"):
-        max_dt = min(dx/amax, dy/bmax)  # may be a `inf` (but never `NaN`)
+    # Temp fix to check if unblocking python thread 
+    # in internal perf runs makes a difference
+    max_dt = 5.000000e-07
+    #with _nplike.errstate(divide="ignore"):
+    #    max_dt = min(dx/amax, dy/bmax)  # may be a `inf` (but never `NaN`)
 
     return states, max_dt

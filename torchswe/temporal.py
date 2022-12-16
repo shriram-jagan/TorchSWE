@@ -186,11 +186,16 @@ def ssprk2(states: States, runtime: DummyDict, config: Config):
         # stage 1: now states.rhs is RHS(u_{n})
         states, max_dt = _prepare_rhs(states, runtime, config)
 
+        # Checking if unblocking the python thread might help with
+        # perf in internal runs; set dt to max_dt and comment out the 
+        # constrain evaluation
+        runtime.dt = max_dt
+
         # adaptive dt based on the CFL of 1st order Euler
-        runtime.dt = adapter(runtime.dt, max_dt, runtime.cfl)  # may exceed next_t
+        #runtime.dt = adapter(runtime.dt, max_dt, runtime.cfl)  # may exceed next_t
 
         # re-evaluate dt with other constraints; dt_constraint might be modified during _prepare_rhs
-        runtime.dt = min(runtime.dt, runtime.dt_constraint)
+        #runtime.dt = min(runtime.dt, runtime.dt_constraint)
 
         # synchronize dt across all ranks
         _nplike.sync()

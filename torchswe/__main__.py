@@ -407,7 +407,8 @@ def main():
         soln = runtime.marching(soln, runtime, config)
 
         # sanity check for the current time
-        assert abs(runtime.next_t-runtime.cur_t) < 1e-10
+        # SJ; Wed 14 Dec 2022 04:00:13 PM PST
+        # assert abs(runtime.next_t-runtime.cur_t) < 1e-10
 
         # update tidx
         runtime.tidx += 1
