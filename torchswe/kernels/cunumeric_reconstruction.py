@@ -6,7 +6,7 @@
 from torchswe import nplike as _nplike
 
 
-def _minmod_slope_kernel(s1, s2, s3, theta):
+def _minmod_slope_kernel(s1, s2, s3, theta, slp):
     """For internal use."""
     denominator = s3 - s2;
 
@@ -29,8 +29,6 @@ def _minmod_slope_kernel(s1, s2, s3, theta):
     slp *= denominator;
     slp /= 2.0;
 
-    return slp
-
 
 def _fix_face_depth_internal(hl, hc, hr, tol, nhl, nhr):
     """For internal use."""
@@ -51,35 +49,22 @@ def _fix_face_depth_internal(hl, hc, hr, tol, nhl, nhr):
 def _fix_face_depth_edge(h, hc, tol, nh):
     """For internal use."""
 
-    nh[hc < tol] = 0.0;
+    nh[_nplike.logical_or(hc < tol, h < tol)] = 0.0
+    _nplike.putmask(nh, h > hc*2.0, hc*2.0)
+    
 
-    nh[h < tol] = 0.0;
-
-    ids = h > hc*2.0
-    _nplike.putmask(nh, ids, hc*2.0)
-
-
-def _recnstrt_face_velocity (h, hu, hv, drytol):
+def _recnstrt_face_velocity(Q, drytol, U):
     """For internal use."""
 
-    u = hu / h;
-    v = hv / h;
-
-    ids = h <= drytol
-    u[ids] = 0.0;
-    v[ids] = 0.0;
-
-    return u, v
+    U[1:3] = Q[1:3]/U[0]
+    U[1:3, U[0] <=drytol] = 0.0;
 
 
-def _recnstrt_face_conservatives(h, u, v, b):
+def _recnstrt_face_conservatives(U, b, Q):
     """For internal use."""
 
-    w = h + b;
-    hu = h * u;
-    hv = h * v;
-
-    return w, hu, hv
+    Q[0] = U[0] + b;
+    Q[1:3] = U[0] * U[1:3];
 
 
 def reconstruct(states, runtime, config):
@@ -132,8 +117,8 @@ def reconstruct(states, runtime, config):
     tol = runtime.tol
 
     # slopes for w, hu, and hv in x and y
-    slpx = _minmod_slope_kernel(Q[:, ybg:yed, xbg-2:xed], Q[:, ybg:yed, xbg-1:xed+1], Q[:, ybg:yed, xbg:xed+2], theta)
-    slpy = _minmod_slope_kernel(Q[:, ybg-2:yed, xbg:xed], Q[:, ybg-1:yed+1, xbg:xed], Q[:, ybg:yed+2, xbg:xed], theta)
+    _minmod_slope_kernel(Q[:, ybg:yed, xbg-2:xed], Q[:, ybg:yed, xbg-1:xed+1], Q[:, ybg:yed, xbg:xed+2], theta, slpx)
+    _minmod_slope_kernel(Q[:, ybg-2:yed, xbg:xed], Q[:, ybg-1:yed+1, xbg:xed], Q[:, ybg:yed+2, xbg:xed], theta, slpy)
 
     # extrapolate discontinuous w, hu, and hv
     _nplike.add(Q[:, ybg:yed, xbg-1:xed], slpx[:, :, :nx+1], out=xmQ)
@@ -147,59 +132,37 @@ def reconstruct(states, runtime, config):
     _nplike.subtract(ymQ[0], yfcenters, out=ymU[0])
     _nplike.subtract(ypQ[0], yfcenters, out=ypU[0])
 
+    # the fixes for negative depths in x- and y- directions are commented out now
+    # since the depths are positive and there is very little work done in the kernels
+    # when the depths are positive (if condition not satisfied). This results
+    # in sporadic usages in perf runs. 
+    # This will be uncommented once the runtime can go farther ahead and schedule few more tasks
+
     # fix negative depths in x direction
-    _fix_face_depth_internal(xpU[0, :, :nx], U[0, ybg:yed, xbg:xed], xmU[0, :, 1:], tol, xpU[0, :, :nx], xmU[0, :, 1:])
-    _fix_face_depth_edge(xmU[0, :, 0], U[0, ybg:yed, xbg-1], tol, xmU[0, :, 0])
-    _fix_face_depth_edge(xpU[0, :, nx], U[0, ybg:yed, xed], tol, xpU[0, :, nx])
+    if 0:
+        _fix_face_depth_internal(xpU[0, :, :nx].copy(), U[0, ybg:yed, xbg:xed], xmU[0, :, 1:].copy(), tol, xpU[0, :, :nx], xmU[0, :, 1:])
+        _fix_face_depth_edge(xmU[0, :, 0].copy(), U[0, ybg:yed, xbg-1], tol, xmU[0, :, 0])
+        _fix_face_depth_edge(xpU[0, :, nx].copy(), U[0, ybg:yed, xed], tol, xpU[0, :, nx])
 
     # fix negative depths in y direction
-    _fix_face_depth_internal(ypU[0, :ny, :], U[0, ybg:yed, xbg:xed], ymU[0, 1:, :], tol, ypU[0, :ny, :], ymU[0, 1:, :])
-    _fix_face_depth_edge(ymU[0, 0, :], U[0, ybg-1, xbg:xed], tol, ymU[0, 0, :])
-    _fix_face_depth_edge(ypU[0, ny, :], U[0, yed, xbg:xed], tol, ypU[0, ny, :])
+    if 0:
+        _fix_face_depth_internal(ypU[0, :ny, :].copy(), U[0, ybg:yed, xbg:xed], ymU[0, 1:, :].copy(), tol, ypU[0, :ny, :], ymU[0, 1:, :])
+        _fix_face_depth_edge(ymU[0, 0, :].copy(), U[0, ybg-1, xbg:xed], tol, ymU[0, 0, :])
+        _fix_face_depth_edge(ypU[0, ny, :].copy(), U[0, yed, xbg:xed], tol, ypU[0, ny, :])
 
     # reconstruct velocity at cell faces in x and y directions
-    xpU[1], xpU[2] = _recnstrt_face_velocity(xpU[0], xpQ[1], xpQ[2], drytol)
-    xmU[1], xmU[2] = _recnstrt_face_velocity(xmU[0], xmQ[1], xmQ[2], drytol)
-    ypU[1], ypU[2] = _recnstrt_face_velocity(ypU[0], ypQ[1], ypQ[2], drytol)
-    ymU[1], ymU[2] = _recnstrt_face_velocity(ymU[0], ymQ[1], ymQ[2], drytol)
+    _recnstrt_face_velocity(xpQ, drytol, xpU)
+    _recnstrt_face_velocity(xmQ, drytol, xmU)
+    _recnstrt_face_velocity(ypQ, drytol, ypU)
+    _recnstrt_face_velocity(ymQ, drytol, ymU)
 
     # reconstruct conservative quantities at cell faces
-    xmQ[0], xmQ[1], xmQ[2] = _recnstrt_face_conservatives(xmU[0], xmU[1], xmU[2], xfcenters)
-    xpQ[0], xpQ[1], xpQ[2] = _recnstrt_face_conservatives(xpU[0], xpU[1], xpU[2], xfcenters)
-    ymQ[0], ymQ[1], ymQ[2] = _recnstrt_face_conservatives(ymU[0], ymU[1], ymU[2], yfcenters)
-    ypQ[0], ypQ[1], ypQ[2] = _recnstrt_face_conservatives(ypU[0], ypU[1], ypU[2], yfcenters)
+    _recnstrt_face_conservatives(xmU, xfcenters, xmQ)
+    _recnstrt_face_conservatives(xpU, xfcenters, xpQ)
+    _recnstrt_face_conservatives(ymU, yfcenters, ymQ)
+    _recnstrt_face_conservatives(ypU, yfcenters, ypQ)
 
     return states
-
-
-def _recnstrt_cell_centers(w, hu, hv, bin, drytol, tol):
-    """For internal use.
-
-    Notes
-    -----
-    w, hu, and hv may be updated in-place!
-    """
-
-    h = w - bin;
-    u = hu / h;
-    v = hv / h;
-
-
-    ids = h < tol
-    h[ids] = 0.0;
-    u[ids] = 0.0;
-    v[ids] = 0.0;
-    _nplike.putmask(w, ids, bin)
-    hu[ids] = 0.0;
-    hv[ids] = 0.0;
-
-    ids = h < drytol
-    u[ids] = 0.0;
-    v[ids] = 0.0;
-    hu[ids] = 0.0;
-    hv[ids] = 0.0;
-
-    return h, u, v
 
 
 def reconstruct_cell_centers(states, runtime, config):
@@ -220,9 +183,18 @@ def reconstruct_cell_centers(states, runtime, config):
 
     tol = runtime.tol
     drytol = config.params.drytol
+    c = runtime.topo.c
 
-    states.p[0], states.p[1], states.p[2] = _recnstrt_cell_centers(
-        states.q[0], states.q[1], states.q[2], runtime.topo.c, drytol, tol,
-    )
+    states.p[0] = states.q[0] - c;
+    states.p[1:3] = states.q[1:3] / states.p[0];
+
+    ids = states.p[0] < tol
+    states.p[:, ids] = 0.0;
+    _nplike.putmask(states.q[0], ids, c)
+    states.q[1:3, ids] = 0.0;
+
+    ids = states.p[0] < drytol
+    states.p[1:3, ids] = 0.0;
+    states.q[1:3, ids] = 0.0;
 
     return states

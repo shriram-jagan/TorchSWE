@@ -186,16 +186,14 @@ def ssprk2(states: States, runtime: DummyDict, config: Config):
         # stage 1: now states.rhs is RHS(u_{n})
         states, max_dt = _prepare_rhs(states, runtime, config)
 
-        # Checking if unblocking the python thread might help with
-        # perf in internal runs; set dt to max_dt and comment out the 
-        # constrain evaluation
-        runtime.dt = max_dt
-
         # adaptive dt based on the CFL of 1st order Euler
-        #runtime.dt = adapter(runtime.dt, max_dt, runtime.cfl)  # may exceed next_t
+        runtime.dt = adapter(runtime.dt, max_dt, runtime.cfl)  # may exceed next_t
 
         # re-evaluate dt with other constraints; dt_constraint might be modified during _prepare_rhs
-        #runtime.dt = min(runtime.dt, runtime.dt_constraint)
+        if not config.params.allow_async:
+            runtime.dt = min(runtime.dt, runtime.dt_constraint)
+        else:
+            runtime.dt = max_dt*runtime.cfl
 
         # synchronize dt across all ranks
         _nplike.sync()
@@ -230,9 +228,9 @@ def ssprk2(states: States, runtime: DummyDict, config: Config):
             _nplike.sync()
             _logger.info(info_str, runtime.counter, runtime.dt, runtime.cur_t, fluid_vol)
 
-        # break loop
-        if abs(runtime.cur_t-runtime.next_t) < runtime.tol:
-            break
+        ## break loop
+        #if abs(runtime.cur_t-runtime.next_t) < runtime.tol:
+        #    break
 
         # for the next time step; copying values should be faster than allocating new arrays
         prev_q[...] = states.q[internal]

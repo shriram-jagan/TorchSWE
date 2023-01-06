@@ -341,6 +341,14 @@ class ParamConfig(BaseConfig):
         Number of ghost cell layers per boundary. At least 2 required.
     dtype : str
         The floating number type. Either "float32" or "float64". Default: "float64"
+    allow_async: bool
+        If set to True, this will replace some operations that block runtime
+        with an alternative that allows the runtime to proceed further.
+        For e.g., min() computation in CFL computation will be replaced by a fixed dt
+    vectorize_bc: bool
+        If set to True, this will vectorize ghost region updates if possible
+    dump_sol_at_end: bool
+        If set to True, this will dump the soln to a pickle file at the end
     """
     # pylint: disable=too-few-public-methods, no-self-argument, invalid-name, no-self-use
 
@@ -348,6 +356,9 @@ class ParamConfig(BaseConfig):
     theta: _confloat(ge=1., le=2.) = 1.3
     drytol: _confloat(ge=0.) = _Field(1.0e-4, alias="dry tolerance")
     ngh: _conint(ge=2) = 2
+    allow_async: bool = _Field(False, alias="allow async") 
+    vectorize_bc: bool = _Field(True, alias="vectorize bc")
+    dump_solution: bool = _Field(False, alias="dump solution")
     log_steps: _conint(ge=1) = _Field(100, alias="print steps")
     dtype: _Literal["float32", "float64"] = "float64"
 

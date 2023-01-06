@@ -10,6 +10,7 @@
 """
 import os as _os
 from operator import itemgetter as _itemgetter
+from torchswe.utils.config import Config as _Config
 from torchswe.utils.config import BCConfig as _BCConfig
 from torchswe.utils.data import Topography as _Topography
 from torchswe.utils.data import States as _States
@@ -35,7 +36,7 @@ else:
     from ._cython_inflow import inflow_bc_factory  # pylint: disable=no-name-in-module
 
 
-def init_bc(states: _States, topo: _Topography, bcs: _BCConfig):
+def init_bc(states: _States, topo: _Topography, config: _Config):
     """ This is supposed to take care of the initialization of all
     boundaries and variables.
 
@@ -44,29 +45,38 @@ def init_bc(states: _States, topo: _Topography, bcs: _BCConfig):
         conditions for all variables and boundaries
     """
 
+    bcs = config.bc
+    vectorize_bc = config.params.vectorize_bc
     orientations = ["west", "east", "south", "north"]
     funcs = []
+
+    def bc_helper(bctp, bcv, components, states, topo):
+        logger.info("Ghost cell update for ornt %s and BC %s", ornt, bctp)
+
+        # linear extrapolation BC
+        if bctp == "extrap":
+            funcs.append(linear_extrap_bc_factory(ornt, components, states, topo))
+        # constant, i.e., Dirichlet
+        elif bctp == "const":
+            funcs.append(const_val_bc_factory(ornt, components, states, topo, bcv))
+        else:
+            print("ERROR: Unsupported boundary condition.")
+
     for ornt, bc in zip(orientations, _itemgetter(*orientations)(bcs)):
-        for i, (bctp, bcv) in enumerate(zip(bc.types, bc.values)):
-            logger.info("Ghost cell update for ornt %s and BC %s", ornt, bctp)
-
-            # linear extrapolation BC
-            if bctp == "extrap":
-                funcs.append(linear_extrap_bc_factory(ornt, i, states, topo))
-
-            # constant, i.e., Dirichlet
-            elif bctp == "const":
-                funcs.append(const_val_bc_factory(ornt, i, states, topo, bcv))
-
-            else:
-                print("ERROR: Unsupported boundary condition.")
+        # same bc along this orientation, so we can vectorize 
+        if vectorize_bc and len(set(bc.types)) == 1 and len(set(bc.values)) == 1:
+            components = -1 
+            bc_helper(bc.types[0], bc.values[0], components, states, topo)
+        else:
+            for component, (bctp, bcv) in enumerate(zip(bc.types, bc.values)):
+                bc_helper(bctp, bcv, component, states, topo)
 
     return funcs
 
 
-def setup_bc(states: _States, topo: _Topography, bcs: _BCConfig):
+def setup_bc(states: _States, topo: _Topography, config: _Config):
 
-    funcs = init_bc(states, topo, bcs)
+    funcs = init_bc(states, topo, config)
 
     # this is the function that will be retuned by this function factory
     def updater(soln: _States):

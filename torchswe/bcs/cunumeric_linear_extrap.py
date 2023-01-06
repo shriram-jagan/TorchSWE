@@ -26,29 +26,47 @@ class LinearExtrapBC:
         self.qbcm2[...] = self.qbcm1 + delta;
 
 def _linear_extrap_bc_set_west(bc, Q, B, Bx, ngh, comp):
-    bc.qc0      = Q[comp, ngh:Q.shape[1]-ngh, ngh]
-    bc.qc1      = Q[comp, ngh:Q.shape[1]-ngh, ngh+1]
-    bc.qbcm1    = Q[comp, ngh:Q.shape[1]-ngh, ngh-1]
-    bc.qbcm2    = Q[comp, ngh:Q.shape[1]-ngh, ngh-2]
+    if comp < 0:
+        bc.qc0      = Q[0:3, ngh:Q.shape[1]-ngh, ngh]
+        bc.qc1      = Q[0:3, ngh:Q.shape[1]-ngh, ngh+1]
+        bc.qbcm1    = Q[0:3, ngh:Q.shape[1]-ngh, ngh-1]
+        bc.qbcm2    = Q[0:3, ngh:Q.shape[1]-ngh, ngh-2]
+    else:
+        bc.qc0      = Q[comp, ngh:Q.shape[1]-ngh, ngh]
+        bc.qc1      = Q[comp, ngh:Q.shape[1]-ngh, ngh+1]
+        bc.qbcm1    = Q[comp, ngh:Q.shape[1]-ngh, ngh-1]
+        bc.qbcm2    = Q[comp, ngh:Q.shape[1]-ngh, ngh-2]
 
     B[ngh:B.shape[0]-ngh, ngh-1] = Bx[0:B.shape[0]-2*ngh, 0] * 2.0 - B[ngh:B.shape[0]-ngh, ngh]
     B[ngh:B.shape[0]-ngh, ngh-2] = Bx[0:B.shape[0]-2*ngh, 0] * 4.0 - B[ngh:B.shape[0]-ngh, ngh] * 3.0
 
 def _linear_extrap_bc_set_east(bc, Q, B, Bx, ngh, comp):
-    bc.qc0      = Q[comp, ngh:Q.shape[1]-ngh, Q.shape[2]-ngh-1]
-    bc.qc1      = Q[comp, ngh:Q.shape[1]-ngh, Q.shape[2]-ngh-2]
-    bc.qbcm1    = Q[comp, ngh:Q.shape[1]-ngh, Q.shape[2]-ngh]
-    bc.qbcm2    = Q[comp, ngh:Q.shape[1]-ngh, Q.shape[2]-ngh+1]
+    if comp < 0:
+        bc.qc0      = Q[0:3, ngh:Q.shape[1]-ngh, Q.shape[2]-ngh-1]
+        bc.qc1      = Q[0:3, ngh:Q.shape[1]-ngh, Q.shape[2]-ngh-2]
+        bc.qbcm1    = Q[0:3, ngh:Q.shape[1]-ngh, Q.shape[2]-ngh]
+        bc.qbcm2    = Q[0:3, ngh:Q.shape[1]-ngh, Q.shape[2]-ngh+1]
+    else:
+        bc.qc0      = Q[comp, ngh:Q.shape[1]-ngh, Q.shape[2]-ngh-1]
+        bc.qc1      = Q[comp, ngh:Q.shape[1]-ngh, Q.shape[2]-ngh-2]
+        bc.qbcm1    = Q[comp, ngh:Q.shape[1]-ngh, Q.shape[2]-ngh]
+        bc.qbcm2    = Q[comp, ngh:Q.shape[1]-ngh, Q.shape[2]-ngh+1]
 
     B[ngh:B.shape[0]-ngh, B.shape[1]-ngh]   = Bx[0:B.shape[0]-2*ngh, Bx.shape[1]-1] * 2.0 - B[ngh:B.shape[0]-ngh, B.shape[1]-ngh-1]
     B[ngh:B.shape[0]-ngh, B.shape[1]-ngh+1] = Bx[0:B.shape[0]-2*ngh, Bx.shape[1]-1] * 4.0 - B[ngh:B.shape[0]-ngh, B.shape[1]-ngh-1] * 3.0
 
 
 def _linear_extrap_bc_set_south(bc, Q, B, By, ngh, comp):
-    bc.qc0      = Q[comp, ngh,      ngh:Q.shape[2]-ngh]
-    bc.qc1      = Q[comp, ngh+1,    ngh:Q.shape[2]-ngh]
-    bc.qbcm1    = Q[comp, ngh-1,    ngh:Q.shape[2]-ngh]
-    bc.qbcm2    = Q[comp, ngh-2,    ngh:Q.shape[2]-ngh]
+    if comp < 0:
+        bc.qc0      = Q[0:3, ngh,      ngh:Q.shape[2]-ngh]
+        bc.qc1      = Q[0:3, ngh+1,    ngh:Q.shape[2]-ngh]
+        bc.qbcm1    = Q[0:3, ngh-1,    ngh:Q.shape[2]-ngh]
+        bc.qbcm2    = Q[0:3, ngh-2,    ngh:Q.shape[2]-ngh]
+    else:
+        bc.qc0      = Q[comp, ngh,      ngh:Q.shape[2]-ngh]
+        bc.qc1      = Q[comp, ngh+1,    ngh:Q.shape[2]-ngh]
+        bc.qbcm1    = Q[comp, ngh-1,    ngh:Q.shape[2]-ngh]
+        bc.qbcm2    = Q[comp, ngh-2,    ngh:Q.shape[2]-ngh]
 
     # modify the topography elevation in ghost cells
     B[ngh-1, ngh:B.shape[1]-ngh] = By[0, 0:B.shape[1]-2*ngh] - B[ngh, ngh:B.shape[1]-ngh]
@@ -56,10 +74,16 @@ def _linear_extrap_bc_set_south(bc, Q, B, By, ngh, comp):
 
 
 def _linear_extrap_bc_set_north(bc, Q, B, By, ngh, comp):
-    bc.qc0      = Q[comp, Q.shape[1]-ngh-1,     ngh:Q.shape[2]-ngh]
-    bc.qc1      = Q[comp, Q.shape[1]-ngh-2,     ngh:Q.shape[2]-ngh]
-    bc.qbcm1    = Q[comp, Q.shape[1]-ngh,       ngh:Q.shape[2]-ngh]
-    bc.qbcm2    = Q[comp, Q.shape[1]-ngh+1,     ngh:Q.shape[2]-ngh]
+    if comp < 0:
+        bc.qc0      = Q[0:3, Q.shape[1]-ngh-1,     ngh:Q.shape[2]-ngh]
+        bc.qc1      = Q[0:3, Q.shape[1]-ngh-2,     ngh:Q.shape[2]-ngh]
+        bc.qbcm1    = Q[0:3, Q.shape[1]-ngh,       ngh:Q.shape[2]-ngh]
+        bc.qbcm2    = Q[0:3, Q.shape[1]-ngh+1,     ngh:Q.shape[2]-ngh]
+    else:
+        bc.qc0      = Q[comp, Q.shape[1]-ngh-1,     ngh:Q.shape[2]-ngh]
+        bc.qc1      = Q[comp, Q.shape[1]-ngh-2,     ngh:Q.shape[2]-ngh]
+        bc.qbcm1    = Q[comp, Q.shape[1]-ngh,       ngh:Q.shape[2]-ngh]
+        bc.qbcm2    = Q[comp, Q.shape[1]-ngh+1,     ngh:Q.shape[2]-ngh]
 
     B[B.shape[0]-ngh, ngh:B.shape[1]-ngh]   = By[By.shape[0]-1, 0:B.shape[1]-2*ngh] * 2.0 - B[B.shape[0]-ngh-1, ngh:B.shape[1]-ngh]
     B[B.shape[0]-ngh+1, ngh:B.shape[1]-ngh] = By[By.shape[0]-1, 0:B.shape[1]-2*ngh] * 4.0 - B[B.shape[0]-ngh-1, ngh:B.shape[1]-ngh] * 3.0
