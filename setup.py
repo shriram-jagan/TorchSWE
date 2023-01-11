@@ -83,7 +83,7 @@ exts = [
 setup(
     cmdclass={"build_ext": build_ext},
     ext_modules=cythonize(
-        exts,
+        [], #exts,
         include_path=["torchswe/bcs"],
         compiler_directives={
             "language_level": "3",

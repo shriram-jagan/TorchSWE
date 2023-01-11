@@ -46,7 +46,7 @@ def get_discontinuous_flux(states, gravity):
     return states
 
 
-def central_scheme_kernel(ma, pa, mf, pf, mq, pq):
+def central_scheme_kernel(ma, pa, mf, pf, mq, pq, flux):
     """For internal use"""
     denominator = pa - ma
     coeff = pa * ma
@@ -57,8 +57,6 @@ def central_scheme_kernel(ma, pa, mf, pf, mq, pq):
     zero_ji = (denominator == 0.)  # should we deal with small rounding err here???
     if zero_ji[0].size > 0:
         flux[:, zero_ji] = 0.
-
-    return flux
 
 
 def central_scheme(states):
@@ -82,19 +80,18 @@ def central_scheme(states):
     ym = y.minus
     yp = y.plus
 
-    x.cf = central_scheme_kernel(xm.a, xp.a, xm.f, xp.f, xm.q, xp.q)
-    y.cf = central_scheme_kernel(ym.a, yp.a, ym.f, yp.f, ym.q, yp.q)
+    central_scheme_kernel(xm.a, xp.a, xm.f, xp.f, xm.q, xp.q, x.cf)
+    central_scheme_kernel(ym.a, yp.a, ym.f, yp.f, ym.q, yp.q, y.cf)
 
     return states
 
 
-def get_local_speed_kernel(hp, hm, up, um, g):
+def get_local_speed_kernel(hp, hm, up, um, g, ap, am):
     """For internal use to mimic CuPy and Cython kernels."""
     ghp = _nplike.sqrt(g * hp);
     ghm = _nplike.sqrt(g * hm);
     ap = _nplike.maximum(_nplike.maximum(up+ghp, um+ghm), 0.0);
     am = _nplike.minimum(_nplike.minimum(up-ghp, um-ghm), 0.0);
-    return ap, am
 
 
 def get_local_speed(states, gravity):
@@ -113,18 +110,24 @@ def get_local_speed(states, gravity):
     """
 
     # faces normal to x- and y-directions
-    states.face.x.plus.a, states.face.x.minus.a = get_local_speed_kernel(
+    get_local_speed_kernel(
             states.face.x.plus.p[0],
             states.face.x.minus.p[0],
             states.face.x.plus.p[1], 
             states.face.x.minus.p[1], 
-            gravity)
+            gravity,
+            states.face.x.plus.a, 
+            states.face.x.minus.a,
+            )
 
-    states.face.y.plus.a, states.face.y.minus.a = get_local_speed_kernel(
+    get_local_speed_kernel(
             states.face.y.plus.p[0], 
             states.face.y.minus.p[0], 
             states.face.y.plus.p[2], 
             states.face.y.minus.p[2], 
-            gravity)
+            gravity,
+            states.face.y.plus.a, 
+            states.face.y.minus.a,
+            )
 
     return states
