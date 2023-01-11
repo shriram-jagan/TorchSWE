@@ -45,6 +45,9 @@ parameters:
   gravity: 9.81   # gravity (m/s^2)
   theta: 1.3      # control numerical dissipation
   dry tolerance: 1.0e-6  # dry tolerance
+  allow async: True # True: allows runtime to go farther ahead 
+  vectorize bc: True
+  dump solution: False
 
 # any Python script that should be executed prior running the solver
 prehook: null
