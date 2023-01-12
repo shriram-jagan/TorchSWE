@@ -60,6 +60,12 @@ class BaseConfig(_BaseModel):
     def __setitem__(self, key, value):
         self.__setattr__(key, value)
 
+    def __str__(self):
+        s = "\n"
+        for k, v in self.__dict__.items():
+            s += "{:<15}: {}\n".format(k, v)
+        return s
+
     def check(self):
         """Manually trigger the validation of the data in this instance."""
         _, _, validation_error = _validate_model(self.__class__, self.__dict__)

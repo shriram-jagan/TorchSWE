@@ -349,6 +349,13 @@ def init(args=None):
     # get configuration
     config = get_final_config(args)
 
+    # print 
+    s = "\nConfiguration:\n" + "-"*60 + "\n"
+    logger.info(s)
+    logger.info(config)
+    s = "\n" + "-"*60 + "\n"
+    logger.info(s)
+
     # get states and runtime data holder
     states, runtime = get_runtime(config, logger)
 
