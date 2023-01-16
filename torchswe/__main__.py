@@ -240,7 +240,7 @@ def get_logger(filename, level, mpi_size, mpi_rank):
 
         fmt = "%(asctime)s %(name)s %(funcName)s [%(levelname)s] %(message)s"  # format
         logger.setLevel(level)
-        logger.addHandler(logging.FileHandler(filename, "w"))
+        logger.addHandler(logging.FileHandler(filename, "a"))
         logger.handlers[-1].setFormatter(logging.Formatter(fmt, "%m-%d %H:%M:%S"))
     else:
         if level == logging.INFO:
