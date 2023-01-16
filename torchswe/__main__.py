@@ -119,6 +119,21 @@ def get_cmd_arguments(argv=None):
         help="Saving log messages to a file instead of stdout."
     )
 
+    parser.add_argument(
+        "--nx", action="store", type=int, default=-1, metavar="NX",
+        help="Number of points in x-direction (overrides nx from config file)"
+    )
+
+    parser.add_argument(
+        "--ny", action="store", type=int, default=-1, metavar="NY",
+        help="Number of points in y-direction (overrides ny from config file)"
+    )
+
+    parser.add_argument(
+        "--dt", action="store", type=float, default=-1, metavar="DT",
+        help="Time step size (overrides dt from config file)"
+    )
+
     args = parser.parse_args(argv)
 
     # make sure the case folder path is absolute
@@ -153,6 +168,18 @@ def get_final_config(args: argparse.Namespace):
 
     # read yaml config file (using the get_config from torchswe.utils.config)
     config = get_config(args.case_folder)
+
+    if args.nx > 0 and args.ny > 0:
+        config.spatial.discretization = [int(args.nx), int(args.ny)]
+    elif args.nx > 0 and args.ny < 0:
+        ny = config.spatial.discretization[1]
+        config.spatial.discretization = [int(args.nx), int(ny)]
+    elif args.nx < 0 and args.ny > 0:
+        nx = config.spatial.discretization[0]
+        config.spatial.discretization = [int(nx), int(args.ny)]
+
+    if args.dt > 0:
+        config.temporal.dt = args.dt
 
     # add args to config
     config.case = args.case_folder
