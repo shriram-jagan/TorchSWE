@@ -134,6 +134,11 @@ def get_cmd_arguments(argv=None):
         help="Time step size (overrides dt from config file)"
     )
 
+    parser.add_argument(
+        "--log-file-mode", action="store", type=str, default="w", metavar="a or w",
+        help="Logging file handler mode (a: append, w:write)"
+    )
+
     args = parser.parse_args(argv)
 
     # make sure the case folder path is absolute
@@ -147,6 +152,9 @@ def get_cmd_arguments(argv=None):
     # make sure the file path is absolute
     if args.log_file is not None:
         args.log_file = args.log_file.expanduser().resolve()
+
+    if args.log_file_mode not in ["w", "a"]:
+        args.log_file_mode = "w"
 
     return args
 
@@ -215,12 +223,13 @@ def get_final_config(args: argparse.Namespace):
     return config
 
 
-def get_logger(filename, level, mpi_size, mpi_rank):
+def get_logger(filename, file_mode: str, level, mpi_size, mpi_rank):
     """Get a logger based on the debug level and whether to use log files.
 
     Arguments
     ---------
     filename : str or os.PathLike
+    file_mode: str (a or w)
     level : int
     mpi_size : int
     mpi_rank : int
@@ -240,7 +249,7 @@ def get_logger(filename, level, mpi_size, mpi_rank):
 
         fmt = "%(asctime)s %(name)s %(funcName)s [%(levelname)s] %(message)s"  # format
         logger.setLevel(level)
-        logger.addHandler(logging.FileHandler(filename, "a"))
+        logger.addHandler(logging.FileHandler(filename, file_mode))
         logger.handlers[-1].setFormatter(logging.Formatter(fmt, "%m-%d %H:%M:%S"))
     else:
         if level == logging.INFO:
@@ -371,7 +380,7 @@ def init(args=None):
     args = get_cmd_arguments() if args is None else args
 
     # setup the top-level (i.e., package-level/torchswe) logger
-    logger = get_logger(args.log_file, args.log_level, size, rank)
+    logger = get_logger(args.log_file, args.log_file_mode, args.log_level, size, rank)
 
     # get configuration
     config = get_final_config(args)
