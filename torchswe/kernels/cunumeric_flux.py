@@ -2,6 +2,26 @@
 # vim:ft=pyrex
 from torchswe import nplike as _nplike
 
+def get_dis_flux_kernel1(grav2, xmf0, xmf1, xmf2, xmq0, xmq1, xmq2, xmp0, xmp1, xmp2, xpf0, xpf1, xpf2, xpq0, xpq1, xpq2, xpp0, xpp1, xpp2):
+
+    # face normal to x-direction: [hu, hu^2 + g(h^2)/2, huv]
+    xmf0 = xmq1
+    xmf1 = xmq1 * xmp1 + grav2 * xmp0 * xmp0
+    xmf2 = xmq1 * xmp2
+    xpf0 = xpq1
+    xpf1 = xpq1 * xpp1 + grav2 * xpp0 * xpp0
+    xpf2 = xpq1 * xpp2
+
+def get_dis_flux_kernel2(grav2, ypf0, ypf1, ypf2, ypq0, ypq1, ypq2, ypp0, ypp1, ypp2, ymq2, ymf0, ymf1, ymf2, ymp0, ymp1, ymp2):
+    # face normal to y-direction: [hv, huv, hv^2+g(h^2)/2]
+    ymf0 = ymq2
+    ymf1 = ymq2 * ymp1
+    ymf2 = ymq2 * ymp2 + grav2 * ymp0 * ymp0
+    ypf0 = ypq2
+    ypf1 = ypq2 * ypp1
+    ypf2 = ypq2 * ypp2 + grav2 * ypp0 * ypp0
+
+    
 
 def get_discontinuous_flux(states, gravity):
     """Calculting the discontinuous fluxes on the both sides at cell faces.
@@ -24,26 +44,43 @@ def get_discontinuous_flux(states, gravity):
     y = states.face.y
     ym = y.minus
     yp = y.plus
+    a = _nplike.empty(xm.f[0].shape)
+    a.fill(gravity/2.0)
+    vecfunc1 = _nplike.vectorize(get_dis_flux_kernel1)
 
-    grav2 = gravity/2.0
+    vecfunc1(a, xm.f[0], xm.f[1], xm.f[2],
+        xm.q[0], xm.q[1], xm.q[2], xm.p[0], xm.p[1], xm.p[2], xp.f[0],
+        xp.f[1], xp.f[2], xp.q[0], xp.q[1], xp.q[2], xp.p[0], xp.p[1],
+        xp.p[2])
 
-    # face normal to x-direction: [hu, hu^2 + g(h^2)/2, huv]
-    xm.f[0] = xm.q[1]
-    xm.f[1] = xm.q[1] * xm.p[1] + grav2 * xm.p[0] * xm.p[0]
-    xm.f[2] = xm.q[1] * xm.p[2]
-    xp.f[0] = xp.q[1]
-    xp.f[1] = xp.q[1] * xp.p[1] + grav2 * xp.p[0] * xp.p[0]
-    xp.f[2] = xp.q[1] * xp.p[2]
+    vecfunc2 = _nplike.vectorize(get_dis_flux_kernel2)
 
-    # face normal to y-direction: [hv, huv, hv^2+g(h^2)/2]
-    ym.f[0] = ym.q[2]
-    ym.f[1] = ym.q[2] * ym.p[1]
-    ym.f[2] = ym.q[2] * ym.p[2] + grav2 * ym.p[0] * ym.p[0]
-    yp.f[0] = yp.q[2]
-    yp.f[1] = yp.q[2] * yp.p[1]
-    yp.f[2] = yp.q[2] * yp.p[2] + grav2 * yp.p[0] * yp.p[0]
+    a2 = _nplike.empty(yp.f[0].shape)
+    a2.fill(gravity/2.0)
+    vecfunc2(a2, yp.f[0], yp.f[1], yp.f[2], yp.q[0], yp.q[1], yp.q[2],
+        yp.p[0], yp.p[1], yp.p[2], ym.q[2], ym.f[0], ym.f[1], ym.f[2],
+        ym.p[0], ym.p[1], ym.p[2])
 
     return states
+
+   # grav2 = gravity/2.0
+
+   # # face normal to x-direction: [hu, hu^2 + g(h^2)/2, huv]
+   # xm.f[0] = xm.q[1]
+   # xm.f[1] = xm.q[1] * xm.p[1] + grav2 * xm.p[0] * xm.p[0]
+   # xm.f[2] = xm.q[1] * xm.p[2]
+   # xp.f[0] = xp.q[1]
+   # xp.f[1] = xp.q[1] * xp.p[1] + grav2 * xp.p[0] * xp.p[0]
+   # xp.f[2] = xp.q[1] * xp.p[2]
+
+   # # face normal to y-direction: [hv, huv, hv^2+g(h^2)/2]
+   # ym.f[0] = ym.q[2]
+   # ym.f[1] = ym.q[2] * ym.p[1]
+   # ym.f[2] = ym.q[2] * ym.p[2] + grav2 * ym.p[0] * ym.p[0]
+   # yp.f[0] = yp.q[2]
+   # yp.f[1] = yp.q[2] * yp.p[1]
+   # yp.f[2] = yp.q[2] * yp.p[2] + grav2 * yp.p[0] * yp.p[0]
+
 
 
 def central_scheme_kernel(ma, pa, mf, pf, mq, pq, flux):
