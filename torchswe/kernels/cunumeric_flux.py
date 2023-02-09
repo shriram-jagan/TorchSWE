@@ -21,7 +21,9 @@ def get_dis_flux_kernel2(grav2, ypf0, ypf1, ypf2, ypq0, ypq1, ypq2, ypp0, ypp1, 
     ypf1 = ypq2 * ypp1
     ypf2 = ypq2 * ypp2 + grav2 * ypp0 * ypp0
 
-    
+vecfunc1 = _nplike.vectorize(get_dis_flux_kernel1, cache=True)
+vecfunc2 = _nplike.vectorize(get_dis_flux_kernel2, cache=True)
+
 
 def get_discontinuous_flux(states, gravity):
     """Calculting the discontinuous fluxes on the both sides at cell faces.
@@ -46,14 +48,11 @@ def get_discontinuous_flux(states, gravity):
     yp = y.plus
     a = _nplike.empty(xm.f[0].shape)
     a.fill(gravity/2.0)
-    vecfunc1 = _nplike.vectorize(get_dis_flux_kernel1)
 
     vecfunc1(a, xm.f[0], xm.f[1], xm.f[2],
         xm.q[0], xm.q[1], xm.q[2], xm.p[0], xm.p[1], xm.p[2], xp.f[0],
         xp.f[1], xp.f[2], xp.q[0], xp.q[1], xp.q[2], xp.p[0], xp.p[1],
         xp.p[2])
-
-    vecfunc2 = _nplike.vectorize(get_dis_flux_kernel2)
 
     a2 = _nplike.empty(yp.f[0].shape)
     a2.fill(gravity/2.0)
