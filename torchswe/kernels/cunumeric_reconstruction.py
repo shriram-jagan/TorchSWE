@@ -6,29 +6,24 @@
 from torchswe import nplike as _nplike
 
 
-def _minmod_slope_kernel(s1, s2, s3, theta, slp):
-    """For internal use."""
-    denominator = s3 - s2;
 
-    with _nplike.errstate(divide="ignore", invalid="ignore"):
-        slp = (s2 - s1) / denominator;
+def _minmod_slope_kernel( slp, denominator, s1, s2, s3, theta ):
+    denominator = s3 - s2
+    if denominator == 0.0:
+        slp = 0.0
+        return
+    slp = s2 - s1
+    if((slp == 0.0) or (slp == -1.0)) :
+        slp = 0.0
+        return
+    slp /= denominator
+    slp = min(slp*theta, (1.0+slp) / 2.0)
+    slp = min(slp, theta)
+    slp = max(slp, 0.0)
+    slp *= denominator
+    slp /= 2.0
 
-    slp[denominator == 0.0] = 0.0
-
-    slp = _nplike.maximum(
-        _nplike.minimum(
-            _nplike.minimum(
-                slp * theta,
-                (slp + 1.0) / 2.0
-            ),
-            theta
-        ),
-        0.
-    )
-
-    slp *= denominator;
-    slp /= 2.0;
-
+minmod_slope_vectorize = _nplike.vectorize(_minmod_slope_kernel, otypes = [float,float,],cache=True)
 
 def _fix_face_depth_internal(hl, hc, hr, tol, nhl, nhr):
     """For internal use."""
@@ -117,8 +112,16 @@ def reconstruct(states, runtime, config):
     tol = runtime.tol
 
     # slopes for w, hu, and hv in x and y
-    _minmod_slope_kernel(Q[:, ybg:yed, xbg-2:xed], Q[:, ybg:yed, xbg-1:xed+1], Q[:, ybg:yed, xbg:xed+2], theta, slpx)
-    _minmod_slope_kernel(Q[:, ybg-2:yed, xbg:xed], Q[:, ybg-1:yed+1, xbg:xed], Q[:, ybg:yed+2, xbg:xed], theta, slpy)
+    #_minmod_slope_kernel(Q[:, ybg:yed, xbg-2:xed], Q[:, ybg:yed, xbg-1:xed+1], Q[:, ybg:yed, xbg:xed+2], theta, slpx)
+    theta_array = _nplike.empty(slpy.shape)
+    theta_array.fill(theta)
+    tmp_array = _nplike.ones(slpy.shape)
+
+    #minmod_slope_vectorize = _nplike.vectorize(_minmod_slope_kernel, otypes = [slpy.dtype,slpy.dtype,],cache=True)
+
+    minmod_slope_vectorize(slpy, tmp_array, Q[:, ybg-2:yed, xbg:xed], Q[:, ybg-1:yed+1, xbg:xed], Q[:, ybg:yed+2, xbg:xed], theta_array)
+    #_minmod_slope_kernel(Q[:, ybg-2:yed, xbg:xed], Q[:, ybg-1:yed+1, xbg:xed], Q[:, ybg:yed+2, xbg:xed], theta, slpy)
+    minmod_slope_vectorize(slpy, tmp_array, Q[:, ybg-2:yed, xbg:xed], Q[:, ybg-1:yed+1, xbg:xed], Q[:, ybg:yed+2, xbg:xed], theta_array)
 
     # extrapolate discontinuous w, hu, and hv
     _nplike.add(Q[:, ybg:yed, xbg-1:xed], slpx[:, :, :nx+1], out=xmQ)

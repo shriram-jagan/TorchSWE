@@ -62,25 +62,25 @@ def get_discontinuous_flux(states, gravity):
 
     return states
 
-   # grav2 = gravity/2.0
+    #grav2 = gravity/2.0
 
-   # # face normal to x-direction: [hu, hu^2 + g(h^2)/2, huv]
-   # xm.f[0] = xm.q[1]
-   # xm.f[1] = xm.q[1] * xm.p[1] + grav2 * xm.p[0] * xm.p[0]
-   # xm.f[2] = xm.q[1] * xm.p[2]
-   # xp.f[0] = xp.q[1]
-   # xp.f[1] = xp.q[1] * xp.p[1] + grav2 * xp.p[0] * xp.p[0]
-   # xp.f[2] = xp.q[1] * xp.p[2]
+    ## face normal to x-direction: [hu, hu^2 + g(h^2)/2, huv]
+    #xm.f[0] = xm.q[1]
+    #xm.f[1] = xm.q[1] * xm.p[1] + grav2 * xm.p[0] * xm.p[0]
+    #xm.f[2] = xm.q[1] * xm.p[2]
+    #xp.f[0] = xp.q[1]
+    #xp.f[1] = xp.q[1] * xp.p[1] + grav2 * xp.p[0] * xp.p[0]
+    #xp.f[2] = xp.q[1] * xp.p[2]
 
-   # # face normal to y-direction: [hv, huv, hv^2+g(h^2)/2]
-   # ym.f[0] = ym.q[2]
-   # ym.f[1] = ym.q[2] * ym.p[1]
-   # ym.f[2] = ym.q[2] * ym.p[2] + grav2 * ym.p[0] * ym.p[0]
-   # yp.f[0] = yp.q[2]
-   # yp.f[1] = yp.q[2] * yp.p[1]
-   # yp.f[2] = yp.q[2] * yp.p[2] + grav2 * yp.p[0] * yp.p[0]
+    ## face normal to y-direction: [hv, huv, hv^2+g(h^2)/2]
+    #ym.f[0] = ym.q[2]
+    #ym.f[1] = ym.q[2] * ym.p[1]
+    #ym.f[2] = ym.q[2] * ym.p[2] + grav2 * ym.p[0] * ym.p[0]
+    #yp.f[0] = yp.q[2]
+    #yp.f[1] = yp.q[2] * yp.p[1]
+    #yp.f[2] = yp.q[2] * yp.p[2] + grav2 * yp.p[0] * yp.p[0]
 
-
+    #return states
 
 def central_scheme_kernel(ma, pa, mf, pf, mq, pq, flux):
     """For internal use"""
