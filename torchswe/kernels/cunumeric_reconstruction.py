@@ -113,15 +113,15 @@ def reconstruct(states, runtime, config):
 
     # slopes for w, hu, and hv in x and y
     #_minmod_slope_kernel(Q[:, ybg:yed, xbg-2:xed], Q[:, ybg:yed, xbg-1:xed+1], Q[:, ybg:yed, xbg:xed+2], theta, slpx)
-    theta_array = _nplike.empty(slpy.shape)
-    theta_array.fill(theta)
+    #theta_array = _nplike.empty(slpy.shape)
+    #theta_array.fill(theta)
     tmp_array = _nplike.ones(slpy.shape)
 
     #minmod_slope_vectorize = _nplike.vectorize(_minmod_slope_kernel, otypes = [slpy.dtype,slpy.dtype,],cache=True)
 
-    minmod_slope_vectorize(slpy, tmp_array, Q[:, ybg-2:yed, xbg:xed], Q[:, ybg-1:yed+1, xbg:xed], Q[:, ybg:yed+2, xbg:xed], theta_array)
+    minmod_slope_vectorize(slpy, tmp_array, Q[:, ybg-2:yed, xbg:xed], Q[:, ybg-1:yed+1, xbg:xed], Q[:, ybg:yed+2, xbg:xed], theta)
     #_minmod_slope_kernel(Q[:, ybg-2:yed, xbg:xed], Q[:, ybg-1:yed+1, xbg:xed], Q[:, ybg:yed+2, xbg:xed], theta, slpy)
-    minmod_slope_vectorize(slpy, tmp_array, Q[:, ybg-2:yed, xbg:xed], Q[:, ybg-1:yed+1, xbg:xed], Q[:, ybg:yed+2, xbg:xed], theta_array)
+    minmod_slope_vectorize(slpy, tmp_array, Q[:, ybg-2:yed, xbg:xed], Q[:, ybg-1:yed+1, xbg:xed], Q[:, ybg:yed+2, xbg:xed], theta)
 
     # extrapolate discontinuous w, hu, and hv
     _nplike.add(Q[:, ybg:yed, xbg-1:xed], slpx[:, :, :nx+1], out=xmQ)

@@ -65,20 +65,21 @@ def get_discontinuous_flux(states, gravity):
     y = states.face.y
     ym = y.minus
     yp = y.plus
-    a = _nplike.empty(xm.f[0].shape)
-    a.fill(gravity/2.0)
+    #a = _nplike.empty(xm.f[0].shape)
+    #a.fill(gravity/2.0)
+    grav2=gravity/2.0
 
     vecfunc1(xm.f[0], xm.f[2],xm.q[1], xm.p[2])
-    vecfunc2(xm.f[1], a, xm.q[1],xm.p[0], xm.p[1])
+    vecfunc2(xm.f[1], grav2, xm.q[1],xm.p[0], xm.p[1])
     vecfunc3(xp.f[0], xp.f[2], xp.q[1], xp.p[2])
-    vecfunc4(xp.f[1],a, xp.q[1], xp.p[0], xp.p[1])
+    vecfunc4(xp.f[1],grav2, xp.q[1], xp.p[0], xp.p[1])
 
-    a2 = _nplike.empty(yp.f[0].shape)
-    a2.fill(gravity/2.0)
+    #a2 = _nplike.empty(yp.f[0].shape)
+    #a2.fill(gravity/2.0)
     vecfunc5(yp.f[0], yp.f[1], yp.q[2],yp.p[1])
-    vecfunc6(yp.f[2], a2, yp.q[2],yp.p[0], yp.p[2])
+    vecfunc6(yp.f[2], grav2, yp.q[2],yp.p[0], yp.p[2])
     vecfunc7(ym.f[0], ym.f[1], ym.q[2], ym.p[1])
-    vecfunc8(ym.f[2], a2,ym.q[2], ym.p[0], ym.p[2])
+    vecfunc8(ym.f[2], grav2,ym.q[2], ym.p[0], ym.p[2])
 
     return states
 
