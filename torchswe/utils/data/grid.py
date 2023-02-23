@@ -177,6 +177,10 @@ class Domain(_BaseConfig):
     x: Gridline
     y: Gridline
 
+    # dx arrays
+    dx_array: _nplike.ndarray
+    dy_array: _nplike.ndarray
+
     # number of halo-ring layers (currently only supports 2)
     nhalo: _Literal[2]
 
@@ -185,6 +189,10 @@ class Domain(_BaseConfig):
     effxed: _conint(gt=2)
     effybg: _Literal[2]
     effyed: _conint(gt=2)
+
+    @_root_validator(pre=False, skip_on_failure=True)
+    def _val_arrays(cls, values):
+        return values
 
     @_validator("effxed")
     def _val_effxed(cls, val, values):  # pylint: disable=no-self-argument, no-self-use
@@ -242,6 +250,11 @@ class Domain(_BaseConfig):
     def delta(self):
         """The cell sizes in y and x."""
         return self.y.delta, self.x.delta
+
+    @property
+    def delta_array(self):
+        """Return cell sizes as arrays of shape (ny, nx)"""
+        return self.dy_array, self.dx_array
 
     @property
     def nonhalo_c(self):
@@ -426,6 +439,10 @@ def get_domain(config: Config):
     # get local gridline
     data.x = get_gridline_x(config)
     data.y = get_gridline_y(config)
+
+    ny, nx = data.y.n, data.x.n
+    data.dx_array = _nplike.full((ny, nx), data.x.delta, dtype=config.params.dtype)
+    data.dy_array = _nplike.full((ny, nx), data.y.delta, dtype=config.params.dtype)
 
     # halo-ring related
     data.nhalo = 2

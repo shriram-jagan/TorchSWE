@@ -295,11 +295,19 @@ def get_runtime(config, logger):
         runtime.topo.c[states.domain.nonhalo_c], states.q[(0,)+states.domain.nonhalo_c])
     states.check()
 
+    runtime.cfl = 1.0
+    logger.info("CFL limit: %e", runtime.cfl)
+
     runtime.dt = config.temporal.dt  # time step size; may be changed during runtime
     logger.info("Initial dt: %e", runtime.dt)
 
-    runtime.cfl = 1.0
-    logger.info("CFL limit: %e", runtime.cfl)
+    # this dt array will be used if config.params.allow_async is True 
+    # we assume CFL to be one for this right now
+    if not config.params.allow_async:
+        runtime.dt_array = None
+    else:
+        ny, nx = states.domain.shape
+        runtime.dt_array = nplike.full((ny, nx), runtime.dt, dtype=config.params.dtype)
 
     runtime.dt_constraint = float("inf")
     logger.info("Initial dt constraint: %e", runtime.dt_constraint)

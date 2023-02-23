@@ -168,7 +168,8 @@ def ssprk2(states: States, runtime: DummyDict, config: Config):
     info_str = "Step %d: step size = %e sec, time = %e sec, total volume = %e"
 
     # to hold previous solution
-    prev_q = _copy.deepcopy(states.q[internal])
+    #prev_q = _copy.deepcopy(states.q[internal])
+    prev_q = states.q[internal].copy()
 
     # update values in halo-ring and ghost cells; also calculate cell-centered non-conservatives
     states = _exchange_states(states)
@@ -193,7 +194,9 @@ def ssprk2(states: States, runtime: DummyDict, config: Config):
         if not config.params.allow_async:
             runtime.dt = min(runtime.dt, runtime.dt_constraint)
         else:
-            runtime.dt = max_dt*runtime.cfl
+            # cfl is set to 1 for this example
+            dt_scalar = max_dt * runtime.cfl
+            runtime.dt = runtime.dt_array
 
         # synchronize dt across all ranks
         _nplike.sync()
@@ -218,6 +221,10 @@ def ssprk2(states: States, runtime: DummyDict, config: Config):
         states = runtime.gh_updater(states)
         states = _reconstruct_cell_centers(states, runtime, config)
 
+        # fix dt 
+        if config.params.allow_async:
+            runtime.dt = dt_scalar 
+
         # update iteration index and time
         runtime.counter += 1
         runtime.cur_t += runtime.dt
@@ -233,7 +240,8 @@ def ssprk2(states: States, runtime: DummyDict, config: Config):
         #    break
 
         # for the next time step; copying values should be faster than allocating new arrays
-        prev_q[...] = states.q[internal]
+        if config.temporal.max_iters > 1:
+            prev_q[...] = states.q[internal]
 
     return states
 

@@ -101,10 +101,6 @@ def get_ghost_cell_updaters(states: _States, topo: _Topography, bcs: _BCConfig):
         Topography instance. Some boundary conditions require topography elevations.
     bcs : torchswe.utils.config.BCConfig
         The configuration instance of boundary conditions.
-    tol : float
-        The tolerance for depths to be considered completely dry cells.
-    drytol : float
-        The tolerance for depths to be considered wet but static cells.
 
     Returns
     -------

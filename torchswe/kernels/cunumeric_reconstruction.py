@@ -8,12 +8,12 @@ from torchswe import nplike as _nplike
 
 def _minmod_slope_kernel(s1, s2, s3, theta, slp):
     """For internal use."""
-    denominator = s3 - s2;
 
-    with _nplike.errstate(divide="ignore", invalid="ignore"):
-        slp = (s2 - s1) / denominator;
+    slp = (s2 - s1) / (s3 - s2);
 
-    slp[denominator == 0.0] = 0.0
+    _nplike.putmask(slp, s3 == s2, 0.0)
+
+    #slp[s3 == s2] = 0.0
 
     slp = _nplike.maximum(
         _nplike.minimum(
@@ -23,11 +23,10 @@ def _minmod_slope_kernel(s1, s2, s3, theta, slp):
             ),
             theta
         ),
-        0.
+        0.0
     )
 
-    slp *= denominator;
-    slp /= 2.0;
+    slp = slp* (s3 - s2)/2.0;
 
 
 def _fix_face_depth_internal(hl, hc, hr, tol, nhl, nhr):
