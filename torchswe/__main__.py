@@ -471,6 +471,7 @@ def main():
     # Don't time the warmup iteration
     if config.params.warmup > 0:
         max_iters = config.temporal.max_iters
+        assert max_iters >= config.params.warmup
         config.temporal.max_iters = config.params.warmup
         soln = runtime.marching(soln, runtime, config)
         config.temporal.max_iters = max_iters - config.params.warmup
