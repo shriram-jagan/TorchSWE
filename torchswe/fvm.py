@@ -46,10 +46,10 @@ def prepare_rhs(states: States, runtime: DummyDict, config: Config):
     states = _reconstruct(states, runtime, config)
 
     # get local speed at cell faces
-    states = _get_local_speed(states)
+    states = _get_local_speed(states, config.params.gravity)
 
     # get discontinuous PDE flux at cell faces
-    states = _get_discontinuous_flux(states)
+    states = _get_discontinuous_flux(states, config.params.gravity)
 
     # get common/continuous numerical flux at cell faces
     states = _central_scheme(states)

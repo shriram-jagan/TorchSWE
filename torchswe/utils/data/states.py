@@ -240,13 +240,7 @@ class States(_BaseConfig):
     ss: _Optional[_nplike.ndarray]
     face: FaceQuantityModel
 
-    # TODO: Remove this nasty piece of code that is being added to avoid using futures
-    gravity_x: _nplike.ndarray
-    gravity_y: _nplike.ndarray
-
-    gravity2_x: _nplike.ndarray
-    gravity2_y: _nplike.ndarray
-
+    # TODO: Remove this nasty piece of code
     p0_shape: _Tuple
     x_plus_p0_shape: _Tuple 
     y_plus_p0_shape: _Tuple
@@ -327,17 +321,8 @@ def get_empty_states(config: Config, domain: Domain = None):
     )
 
     # SJ: Added to avoid using futures
-
     data.x_plus_p0_shape = data.face.x.plus.p[0].shape
     data.y_plus_p0_shape = data.face.y.plus.p[0].shape
-
-    gravity = config.params.gravity
-    data.gravity_x = _nplike.full(data.x_plus_p0_shape, gravity, dtype=dtype)
-    data.gravity_y = _nplike.full(data.y_plus_p0_shape, gravity, dtype=dtype)
-
-    data.gravity2_x = _nplike.full(data.x_plus_p0_shape, gravity/2, dtype=dtype)
-    data.gravity2_y = _nplike.full(data.y_plus_p0_shape, gravity/2, dtype=dtype)
-
     data.p0_shape = data.p[0].shape
 
     return States(**data)
