@@ -367,6 +367,7 @@ class ParamConfig(BaseConfig):
     dump_solution: bool = _Field(False, alias="dump solution")
     log_steps: _conint(ge=1) = _Field(100, alias="print steps")
     dtype: _Literal["float32", "float64"] = "float64"
+    warmup: int = _Field(0, alias="warmup iterations")
 
     @_validator("ngh")
     def _val_ngh(cls, val):

@@ -468,8 +468,14 @@ def main():
     else:
         logger.info("No need to save data for \"no save\" method or for a continued run.")
 
-    perf_t0 = time()
+    # Don't time the warmup iteration
+    if config.params.warmup > 0:
+        max_iters = config.temporal.max_iters
+        config.temporal.max_iters = config.params.warmup
+        soln = runtime.marching(soln, runtime, config)
+        config.temporal.max_iters = max_iters - config.params.warmup
 
+    perf_t0 = time()
     # start running time marching until each output time
     for runtime.next_t in runtime.times[runtime.tidx+1:]:
         logger.info("Marching from T=%s to T=%s", runtime.cur_t, runtime.next_t)

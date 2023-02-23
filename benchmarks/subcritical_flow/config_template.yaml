@@ -48,6 +48,7 @@ parameters:
   allow async: True # True: allows runtime to go farther ahead 
   vectorize bc: True
   dump solution: False
+  warmup iterations: 2 # this should be greater than 0 and less then NSTEPS
 
 # any Python script that should be executed prior running the solver
 prehook: null
