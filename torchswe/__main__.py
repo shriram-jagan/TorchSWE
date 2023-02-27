@@ -42,7 +42,7 @@ nplike.set_printoptions(precision=15, linewidth=200)
 # available time marching options
 MARCHING_OPTIONS = {"Euler": euler, "SSP-RK2": ssprk2, "SSP-RK3": ssprk3}  # available options
 
-def dump_solution(config):
+def dump_solution(config, soln):
     """Dumps mesh and solution variables to a pickle file"""
     if config.params.dump_solution:
         d = {'w': soln.q[(0,)  + soln.domain.nonhalo_c],
@@ -499,7 +499,7 @@ def main():
     logger.info("Program ends now.")
 
     # dump mesh and solution variables to a pickle file if requested
-    dump_solution(config)
+    dump_solution(config, soln)
 
     return 0
 
