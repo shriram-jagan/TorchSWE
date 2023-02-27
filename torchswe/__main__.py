@@ -341,6 +341,9 @@ def get_runtime(config, logger):
     runtime.sources = [topography_gradient]
     logger.info("Explicit source term: topography gradients")
 
+    # create an array for gravity (this is to avoid allocation of Futures)
+    runtime.gravity_array = nplike.full((ny, nx), config.params.gravity, dtype=config.params.dtype)
+
     if config.ptsource is not None:
         # add the function of calculating point source
         runtime.ptsource = get_pointsource(config, 0, states.domain)

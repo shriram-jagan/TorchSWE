@@ -42,7 +42,7 @@ def topography_gradient(states: States, runtime: DummyDict, config: Config) -> S
     """
     # auto-broadcasting; add to rhs in-place
     states.s[1:, ...] -= (
-        config.params.gravity * states.p[(0,)+states.domain.nonhalo_c] * runtime.topo.grad
+        runtime.gravity_array * states.p[(0,)+states.domain.nonhalo_c] * runtime.topo.grad
     )
     return states
 
