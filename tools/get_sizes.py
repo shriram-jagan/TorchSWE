@@ -8,8 +8,8 @@ import numpy as np
 # INPUTS
 
 # Ideally, this should match the discretization set in config.yaml
-nx = 1000
-ny = 1000
+nx = 2000
+ny = 500
 
 # number of ghost points; don't change this
 ngh = 2 
@@ -51,11 +51,11 @@ d['states.slpx'] = (3, ny, nx+2)
 d['states.slpy'] = (3, ny+2, nx)
 
 # Topo class
-d['topo.v'] = (ny+1, nx+1)
-d['topo.c'] = (ny, nx) 
-d['topo.xf'] = (ny-2*ngh, nx-2*ngh+1)
-d['topo.yf'] = (ny-2*ngh+1, nx-2*ngh)
-d['topo.grad'] = (2, ny-2*ngh, nx-2*ngh)
+d['topo.v'] = (ny+ 2*ngh +1, nx+2*ngh+1)
+d['topo.c'] = (ny+2*ngh, nx+2*ngh) 
+d['topo.xf'] = (ny, nx+1)
+d['topo.yf'] = (ny+1, nx)
+d['topo.grad'] = (2, ny, nx)
 
 print("(nx, ny): %-30s" % str((nx, ny)))
 print()
