@@ -166,24 +166,24 @@ def reconstruct(states, runtime, config):
 
     return states
 
-def reconstruct_cell_centers_kernel(Q0, Q1, Q2, U0, U1, U2, B, drytol, tol):
+def reconstruct_cell_centers_kernel(qa, qb, qc, ua, ub, uc, b, drytol, tol):
 
-    U0 = Q0 - B
-    if U0 < tol:
-        U0 = 0.0
-        U1 = 0.0
-        U2 = 0.0
-        Q0 = B
-        Q1 = 0.0
-        Q2 = 0.0
-    elif U0 < drytol:
-        U1 = 0.0
-        U2 = 0.0
-        Q1 = 0.0
-        Q2 = 0.0
+    ua = qa - b
+    if ua < tol:
+        ua = 0.0
+        ub = 0.0
+        uc = 0.0
+        qa = b
+        qb = 0.0
+        qc = 0.0
+    elif ua < drytol:
+        ub = 0.0
+        uc = 0.0
+        qb = 0.0
+        qc = 0.0
     else :
-        U1 = Q1/U0
-        U2 = Q2/U0
+        ub = qb/ua
+        uc = qc/ua
 
 reconstruct_cell_centers_vectorize = _nplike.vectorize(reconstruct_cell_centers_kernel,
         otypes=[float,float,float,float,float,float],
@@ -209,11 +209,10 @@ def reconstruct_cell_centers(states, runtime, config):
     drytol = config.params.drytol
     c = runtime.topo.c
 
-    B = c
-    Q0, Q1, Q2 = states.q[0], states.q[1], states.q[2]
-    U0, U1, U2 = states.p[0], states.p[1], states.p[2]
+    qa, qb, qc = states.q[0], states.q[1], states.q[2]
+    ua, ub, uc = states.p[0], states.p[1], states.p[2]
 
-    reconstruct_cell_centers_vectorize(Q0, Q1, Q2, U0, U1, U2, B, drytol, tol)
+    reconstruct_cell_centers_vectorize(qa, qb, qc, ua, ub, uc, c, drytol, tol)
 
 #    states.p[0] = states.q[0] - c;
 #    states.p[1:3] = states.q[1:3] / states.p[0];
