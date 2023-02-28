@@ -166,6 +166,28 @@ def reconstruct(states, runtime, config):
 
     return states
 
+def reconstruct_cell_centers_kernel(Q0, Q1, Q2, U0, U1, U2, B, drytol, tol):
+
+    U0 = Q0 - B
+    if U0 < tol:
+        U0 = 0.0
+        U1 = 0.0
+        U2 = 0.0
+        Q0 = B
+        Q1 = 0.0
+        Q2 = 0.0
+    elif U0 < drytol:
+        U1 = 0.0
+        U2 = 0.0
+        Q1 = 0.0
+        Q2 = 0.0
+    else :
+        U1 = Q1/U0
+        U2 = Q2/U0
+
+reconstruct_cell_centers_vectorize = _nplike.vectorize(reconstruct_cell_centers_kernel,
+        otypes=[float,float,float,float,float,float],
+        cache=True)
 
 def reconstruct_cell_centers(states, runtime, config):
     """Calculate cell-centered non-conservatives.
@@ -187,16 +209,22 @@ def reconstruct_cell_centers(states, runtime, config):
     drytol = config.params.drytol
     c = runtime.topo.c
 
-    states.p[0] = states.q[0] - c;
-    states.p[1:3] = states.q[1:3] / states.p[0];
+    B = c
+    Q0, Q1, Q2 = states.q[0], states.q[1], states.q[2]
+    U0, U1, U2 = states.p[0], states.p[1], states.p[2]
 
-    ids = states.p[0] < tol
-    states.p[:, ids] = 0.0;
-    _nplike.putmask(states.q[0], ids, c)
-    states.q[1:3, ids] = 0.0;
+    reconstruct_cell_centers_vectorize(Q0, Q1, Q2, U0, U1, U2, B, drytol, tol)
 
-    ids = states.p[0] < drytol
-    states.p[1:3, ids] = 0.0;
-    states.q[1:3, ids] = 0.0;
+#    states.p[0] = states.q[0] - c;
+#    states.p[1:3] = states.q[1:3] / states.p[0];
+#
+#    ids = states.p[0] < tol
+#    states.p[:, ids] = 0.0;
+#    _nplike.putmask(states.q[0], ids, c)
+#    states.q[1:3, ids] = 0.0;
+#
+#    ids = states.p[0] < drytol
+#    states.p[1:3, ids] = 0.0;
+#    states.q[1:3, ids] = 0.0;
 
     return states

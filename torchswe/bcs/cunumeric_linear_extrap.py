@@ -10,12 +10,12 @@
 """
 from torchswe import nplike as _nplike
 
-def _bc_vectorize_kernel(qbcm1, qbcm2, qc0, qc1):
-    # delta = qc0 - qc1
-    qbcm1 = qc0 + qc0 - qc1;
-    qbcm2 = qbcm1 + qc0 - qc1;
-
-bc_vectorize = _nplike.vectorize(_bc_vectorize_kernel, otypes = (float,float), cache=True)
+#def _bc_vectorize_kernel(qbcm1, qbcm2, qc0, qc1):
+#    # delta = qc0 - qc1
+#    qbcm1 = qc0 + qc0 - qc1;
+#    qbcm2 = qbcm1 + qc0 - qc1;
+#
+#bc_vectorize = _nplike.vectorize(_bc_vectorize_kernel, otypes = (float,float), cache=True)
 
 class LinearExtrapBC:
     """ Linear extrapolation boundary condition."""
@@ -29,10 +29,11 @@ class LinearExtrapBC:
         
     def __call__(self):
         """ Implementation of the boundary condition."""
-        #delta = self.qc0 - self.qc1;
-        #self.qbcm1[...] = self.qc0 + delta;
-        #self.qbcm2[...] = self.qbcm1 + delta;
-        bc_vectorize(self.qbcm1, self.qbcm2, self.qc0, self.qc1) 
+
+        delta = self.qc0 - self.qc1;
+        self.qbcm1[...] = self.qc0 + delta;
+        self.qbcm2[...] = self.qbcm1 + delta;
+        #bc_vectorize(self.qbcm1, self.qbcm2, self.qc0, self.qc1) 
 
 def _linear_extrap_bc_set_west(bc, Q, B, Bx, ngh, comp):
     if comp < 0:
