@@ -6,25 +6,29 @@
 from torchswe import nplike as _nplike
 
 
-def _minmod_slope_kernel(slp, denominator, s1, s2, s3, theta):
-    denominator = s3 - s2
-    if denominator == 0.0:
-        slp = 0.0
-        return
+def _minmod_slope_kernel(s1, s2, s3, theta, slp):
+    """For internal use."""
+    denominator = s3 - s2;
 
-    slp = s2 - s1
-    if ((slp == 0.0) or (slp == -1.0)):
-        slp = 0.0
-        return
+    with _nplike.errstate(divide="ignore", invalid="ignore"):
+        slp = (s2 - s1) / denominator;
 
-    slp /= denominator
-    slp = min(slp*theta, (1.0+slp) / 2.0)
-    slp = min(slp, theta)
-    slp = max(slp, 0.0)
-    slp *= denominator
-    slp /= 2.0
+    slp[denominator == 0.0] = 0.0
 
-minmod_slope_vectorize = _nplike.vectorize(_minmod_slope_kernel, otypes = [float,float,],cache=True)
+    slp = _nplike.maximum(
+        _nplike.minimum(
+            _nplike.minimum(
+                slp * theta,
+                (slp + 1.0) / 2.0
+            ),
+            theta
+        ),
+        0.
+    )
+
+    slp *= denominator;
+    slp /= 2.0;
+
 
 def _fix_face_depth_internal(hl, hc, hr, tol, nhl, nhr):
     """For internal use."""
@@ -113,14 +117,8 @@ def reconstruct(states, runtime, config):
     tol = runtime.tol
 
     # slopes for w, hu, and hv in x and y
-    #_minmod_slope_kernel(Q[:, ybg:yed, xbg-2:xed], Q[:, ybg:yed, xbg-1:xed+1], Q[:, ybg:yed, xbg:xed+2], theta, slpx)
-    #_minmod_slope_kernel(Q[:, ybg-2:yed, xbg:xed], Q[:, ybg-1:yed+1, xbg:xed], Q[:, ybg:yed+2, xbg:xed], theta, slpy)
-
-    tmp_array = _nplike.ones(slpx.shape)
-    minmod_slope_vectorize(slpx, tmp_array, Q[:, ybg:yed, xbg-2:xed], Q[:, ybg:yed, xbg-1:xed+1], Q[:, ybg:yed, xbg:xed+2], theta)
-
-    tmp_array = _nplike.ones(slpy.shape)
-    minmod_slope_vectorize(slpy, tmp_array, Q[:, ybg-2:yed, xbg:xed], Q[:, ybg-1:yed+1, xbg:xed], Q[:, ybg:yed+2, xbg:xed], theta)
+    _minmod_slope_kernel(Q[:, ybg:yed, xbg-2:xed], Q[:, ybg:yed, xbg-1:xed+1], Q[:, ybg:yed, xbg:xed+2], theta, slpx)
+    _minmod_slope_kernel(Q[:, ybg-2:yed, xbg:xed], Q[:, ybg-1:yed+1, xbg:xed], Q[:, ybg:yed+2, xbg:xed], theta, slpy)
 
     # extrapolate discontinuous w, hu, and hv
     _nplike.add(Q[:, ybg:yed, xbg-1:xed], slpx[:, :, :nx+1], out=xmQ)
@@ -166,28 +164,6 @@ def reconstruct(states, runtime, config):
 
     return states
 
-def reconstruct_cell_centers_kernel(qa, qb, qc, ua, ub, uc, b, drytol, tol):
-
-    ua = qa - b
-    if ua < tol:
-        ua = 0.0
-        ub = 0.0
-        uc = 0.0
-        qa = b
-        qb = 0.0
-        qc = 0.0
-    elif ua < drytol:
-        ub = 0.0
-        uc = 0.0
-        qb = 0.0
-        qc = 0.0
-    else :
-        ub = qb/ua
-        uc = qc/ua
-
-reconstruct_cell_centers_vectorize = _nplike.vectorize(reconstruct_cell_centers_kernel,
-        otypes=[float,float,float,float,float,float],
-        cache=True)
 
 def reconstruct_cell_centers(states, runtime, config):
     """Calculate cell-centered non-conservatives.
@@ -209,21 +185,16 @@ def reconstruct_cell_centers(states, runtime, config):
     drytol = config.params.drytol
     c = runtime.topo.c
 
-    qa, qb, qc = states.q[0], states.q[1], states.q[2]
-    ua, ub, uc = states.p[0], states.p[1], states.p[2]
+    states.p[0] = states.q[0] - c;
+    states.p[1:3] = states.q[1:3] / states.p[0];
 
-    reconstruct_cell_centers_vectorize(qa, qb, qc, ua, ub, uc, c, drytol, tol)
+    ids = states.p[0] < tol
+    states.p[:, ids] = 0.0;
+    _nplike.putmask(states.q[0], ids, c)
+    states.q[1:3, ids] = 0.0;
 
-#    states.p[0] = states.q[0] - c;
-#    states.p[1:3] = states.q[1:3] / states.p[0];
-#
-#    ids = states.p[0] < tol
-#    states.p[:, ids] = 0.0;
-#    _nplike.putmask(states.q[0], ids, c)
-#    states.q[1:3, ids] = 0.0;
-#
-#    ids = states.p[0] < drytol
-#    states.p[1:3, ids] = 0.0;
-#    states.q[1:3, ids] = 0.0;
+    ids = states.p[0] < drytol
+    states.p[1:3, ids] = 0.0;
+    states.q[1:3, ids] = 0.0;
 
     return states
