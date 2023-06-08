@@ -139,7 +139,7 @@ def get_cmd_arguments(argv=None):
         help="Logging file handler mode (a: append, w:write)"
     )
 
-    args = parser.parse_args(argv)
+    args, extra = parser.parse_known_args(argv)
 
     # make sure the case folder path is absolute
     if args.case_folder is not None:
@@ -342,6 +342,7 @@ def get_runtime(config, logger):
     logger.info("Explicit source term: topography gradients")
 
     # create an array for gravity (this is to avoid allocation of Futures)
+    ny, nx = states.domain.shape
     runtime.gravity_array = nplike.full((ny, nx), config.params.gravity, dtype=config.params.dtype)
 
     if config.ptsource is not None:
