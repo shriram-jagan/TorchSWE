@@ -6,7 +6,7 @@
 from torchswe import nplike as _nplike
 
 
-def _minmod_slope_kernel(s1, s2, s3, theta, slp):
+def _minmod_slope_kernel(s1, s2, s3, theta):
     """For internal use."""
     denominator = s3 - s2;
 
@@ -28,6 +28,8 @@ def _minmod_slope_kernel(s1, s2, s3, theta, slp):
 
     slp *= denominator;
     slp /= 2.0;
+
+    return slp
 
 
 def _fix_face_depth_internal(hl, hc, hr, tol, nhl, nhr):
@@ -117,8 +119,8 @@ def reconstruct(states, runtime, config):
     tol = runtime.tol
 
     # slopes for w, hu, and hv in x and y
-    _minmod_slope_kernel(Q[:, ybg:yed, xbg-2:xed], Q[:, ybg:yed, xbg-1:xed+1], Q[:, ybg:yed, xbg:xed+2], theta, slpx)
-    _minmod_slope_kernel(Q[:, ybg-2:yed, xbg:xed], Q[:, ybg-1:yed+1, xbg:xed], Q[:, ybg:yed+2, xbg:xed], theta, slpy)
+    slpx = _minmod_slope_kernel(Q[:, ybg:yed, xbg-2:xed], Q[:, ybg:yed, xbg-1:xed+1], Q[:, ybg:yed, xbg:xed+2], theta)
+    slpy = _minmod_slope_kernel(Q[:, ybg-2:yed, xbg:xed], Q[:, ybg-1:yed+1, xbg:xed], Q[:, ybg:yed+2, xbg:xed], theta)
 
     # extrapolate discontinuous w, hu, and hv
     _nplike.add(Q[:, ybg:yed, xbg-1:xed], slpx[:, :, :nx+1], out=xmQ)
