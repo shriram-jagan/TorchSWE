@@ -5,7 +5,56 @@
 """
 from torchswe import nplike as _nplike
 
+def reconstruct_cell_centers(qa, qb, qc, ua, ub, uc, b, drytol, tol):
 
+    ua = qa - b
+
+    ub = qb/ua
+    uc = qc/ua
+
+    if ua < tol:
+        ua = 0.0
+        ub = 0.0
+        uc = 0.0
+        qa = b
+        qb = 0.0
+        qc = 0.0
+    if ua < drytol:
+        ub = 0.0
+        uc = 0.0
+        qb = 0.0
+        qc = 0.0
+
+    return qa, qb, qc, ua, ub, uc
+
+
+def reconstruct_face_velocity(ub, uc, ua, drytol, qb, qc):
+
+    ub = qb/ua 
+    uc = qc/ua
+    if ua <= drytol:
+        ub = 0.0
+        uc = 0.0
+
+    return ub, uc
+
+
+def reconstruct_face_conservatives(qa, qb, qc, b, ua, ub, uc):
+    """For internal use."""
+
+    qa = ua + b
+    qb = ua * ub
+    qc = ua * uc
+
+    return qa, qb, qc
+
+
+vfunc_reconstruct_face_velocity       = _nplike.vectorize(reconstruct_face_velocity, cache=True)
+vfunc_reconstruct_face_conservatives  = _nplike.vectorize(reconstruct_face_conservatives, cache=True)
+vfunc_reconstruct_cell_centers        = _nplike.vectorize(reconstruct_cell_centers, cache=True)
+
+
+# TODO: This kernel will be vectorized once we have support for multiple return statements
 def _minmod_slope_kernel(s1, s2, s3, theta):
     """For internal use."""
     denominator = s3 - s2;
@@ -53,20 +102,6 @@ def _fix_face_depth_edge(h, hc, tol, nh):
 
     nh[_nplike.logical_or(hc < tol, h < tol)] = 0.0
     _nplike.putmask(nh, h > hc*2.0, hc*2.0)
-    
-
-def _recnstrt_face_velocity(Q, drytol, U):
-    """For internal use."""
-
-    U[1:3] = Q[1:3]/U[0]
-    U[1:3, U[0] <=drytol] = 0.0;
-
-
-def _recnstrt_face_conservatives(U, b, Q):
-    """For internal use."""
-
-    Q[0] = U[0] + b;
-    Q[1:3] = U[0] * U[1:3];
 
 
 def reconstruct(states, runtime, config):
@@ -153,16 +188,16 @@ def reconstruct(states, runtime, config):
         _fix_face_depth_edge(ypU[0, ny, :].copy(), U[0, yed, xbg:xed], tol, ypU[0, ny, :])
 
     # reconstruct velocity at cell faces in x and y directions
-    _recnstrt_face_velocity(xpQ, drytol, xpU)
-    _recnstrt_face_velocity(xmQ, drytol, xmU)
-    _recnstrt_face_velocity(ypQ, drytol, ypU)
-    _recnstrt_face_velocity(ymQ, drytol, ymU)
+    xpU[1], xpU[2] = vfunc_reconstruct_face_velocity(xpU[1], xpU[2], xpU[0], drytol, xpQ[1], xpQ[2])
+    xmU[1], xmU[2] = vfunc_reconstruct_face_velocity(xmU[1], xmU[2], xmU[0], drytol, xmQ[1], xmQ[2])
+    ypU[1], ypU[2] = vfunc_reconstruct_face_velocity(ypU[1], ypU[2], ypU[0], drytol, ypQ[1], ypQ[2])
+    ymU[1], ymU[2] = vfunc_reconstruct_face_velocity(ymU[1], ymU[2], ymU[0], drytol, ymQ[1], ymQ[2])
 
     # reconstruct conservative quantities at cell faces
-    _recnstrt_face_conservatives(xmU, xfcenters, xmQ)
-    _recnstrt_face_conservatives(xpU, xfcenters, xpQ)
-    _recnstrt_face_conservatives(ymU, yfcenters, ymQ)
-    _recnstrt_face_conservatives(ypU, yfcenters, ypQ)
+    xmQ[0], xmQ[1], xmQ[2] = vfunc_reconstruct_face_conservatives(xmQ[0], xmQ[1], xmQ[2], xfcenters, xmU[0], xmU[1], xmU[2])
+    xpQ[0], xpQ[1], xpQ[2] = vfunc_reconstruct_face_conservatives(xpQ[0], xpQ[1], xpQ[2], xfcenters, xpU[0], xpU[1], xpU[2])
+    ymQ[0], ymQ[1], ymQ[2] = vfunc_reconstruct_face_conservatives(ymQ[0], ymQ[1], ymQ[2], yfcenters, ymU[0], ymU[1], ymU[2])
+    ypQ[0], ypQ[1], ypQ[2] = vfunc_reconstruct_face_conservatives(ypQ[0], ypQ[1], ypQ[2], yfcenters, ypU[0], ypU[1], ypU[2])
 
     return states
 
@@ -187,16 +222,16 @@ def reconstruct_cell_centers(states, runtime, config):
     drytol = config.params.drytol
     c = runtime.topo.c
 
-    states.p[0] = states.q[0] - c;
-    states.p[1:3] = states.q[1:3] / states.p[0];
-
-    ids = states.p[0] < tol
-    states.p[:, ids] = 0.0;
-    _nplike.putmask(states.q[0], ids, c)
-    states.q[1:3, ids] = 0.0;
-
-    ids = states.p[0] < drytol
-    states.p[1:3, ids] = 0.0;
-    states.q[1:3, ids] = 0.0;
+    states.q[0], states.q[1], states.q[2], states.p[0], states.p[1], states.p[2] = vfunc_reconstruct_cell_centers(
+            states.q[0], 
+            states.q[1], 
+            states.q[2], 
+            states.p[0], 
+            states.p[1], 
+            states.p[2], 
+            c, 
+            drytol, 
+            tol,
+        )
 
     return states
