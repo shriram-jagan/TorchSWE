@@ -30,6 +30,7 @@ from torchswe.utils.misc import DummyDict
 from torchswe.utils.misc import exchange_states
 from torchswe.utils.io import write_snapshot
 from torchswe.utils.io import read_snapshot
+from torchswe.utils.io import dump_solution
 from torchswe.utils.config import get_config
 from torchswe.kernels import reconstruct_cell_centers
 from torchswe.bcs import setup_bc 
@@ -41,24 +42,6 @@ nplike.set_printoptions(precision=15, linewidth=200)
 
 # available time marching options
 MARCHING_OPTIONS = {"Euler": euler, "SSP-RK2": ssprk2, "SSP-RK3": ssprk3}  # available options
-
-def dump_solution(config, soln):
-    """Dumps mesh and solution variables to a pickle file"""
-    if config.params.dump_solution:
-        d = {'w': soln.q[(0,)  + soln.domain.nonhalo_c],
-             'hu': soln.q[(1,) + soln.domain.nonhalo_c],
-             'hv': soln.q[(2,) + soln.domain.nonhalo_c],
-             'h':  soln.p[(0,) + soln.domain.nonhalo_c],
-             'u':  soln.p[(1,) + soln.domain.nonhalo_c],
-             'v':  soln.p[(2,) + soln.domain.nonhalo_c],
-             'x':  soln.domain.x.v,
-             'y':  soln.domain.y.v,
-             'dx': soln.domain.x.delta,
-             'dy': soln.domain.y.delta,
-            }
-
-        f = str(nplike.__name__) + '_allvars.pkl'
-        pkl.dump(d, open(f, "wb"))
     
 def get_cmd_arguments(argv=None):
     """Parse and get CMD arguments.
@@ -503,7 +486,7 @@ def main():
     logger.info("Program ends now.")
 
     # dump mesh and solution variables to a pickle file if requested
-    dump_solution(config, soln)
+    dump_solution(soln, runtime, config, filename='end.pkl')
 
     return 0
 
