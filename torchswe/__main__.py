@@ -460,7 +460,10 @@ def main():
         max_iters = config.temporal.max_iters
         assert max_iters >= config.params.warmup
         config.temporal.max_iters = config.params.warmup
+        t0 = time()
         soln = runtime.marching(soln, runtime, config)
+        t1 = time()
+        logger.info("Warmup time (wall time): %s seconds", (t1 - t0)/1e6)
         config.temporal.max_iters = max_iters - config.params.warmup
 
     perf_t0 = time()
