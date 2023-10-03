@@ -141,13 +141,13 @@ def reconstruct(states, runtime, config):
     # This will be uncommented once the runtime can go farther ahead and schedule few more tasks
 
     # fix negative depths in x direction
-    if 0:
+    if 1:
         _fix_face_depth_internal(xpU[0, :, :nx].copy(), U[0, ybg:yed, xbg:xed], xmU[0, :, 1:].copy(), tol, xpU[0, :, :nx], xmU[0, :, 1:])
         _fix_face_depth_edge(xmU[0, :, 0].copy(), U[0, ybg:yed, xbg-1], tol, xmU[0, :, 0])
         _fix_face_depth_edge(xpU[0, :, nx].copy(), U[0, ybg:yed, xed], tol, xpU[0, :, nx])
 
     # fix negative depths in y direction
-    if 0:
+    if 1:
         _fix_face_depth_internal(ypU[0, :ny, :].copy(), U[0, ybg:yed, xbg:xed], ymU[0, 1:, :].copy(), tol, ypU[0, :ny, :], ymU[0, 1:, :])
         _fix_face_depth_edge(ymU[0, 0, :].copy(), U[0, ybg-1, xbg:xed], tol, ymU[0, 0, :])
         _fix_face_depth_edge(ypU[0, ny, :].copy(), U[0, yed, xbg:xed], tol, ypU[0, ny, :])

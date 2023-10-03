@@ -6,6 +6,11 @@ build-backend = "setuptools.build_meta"
 source = ["torchswe/tests"]
 source_pkgs = ["torchswe"]
 
+[tool.pytest.ini_options]
+addopts = [
+    "--import-mode=importlib",
+]
+
 [tool.coverage.paths]
 source = [
     ".",
